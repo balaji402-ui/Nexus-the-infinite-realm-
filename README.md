@@ -67,7 +67,7 @@ More story details, locations, characters, and enemies will be revealed as devel
 
 📱 Development Roadmap
 
-- [ ] Initial HTML game prototype
+- [x] Initial HTML game prototype
 - [ ] Core side-scrolling movement
 - [ ] Player combat system
 - [ ] Stamina and health management

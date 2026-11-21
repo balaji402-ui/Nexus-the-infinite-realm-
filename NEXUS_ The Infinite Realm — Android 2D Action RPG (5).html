@@ -1,0 +1,2381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>NEXUS: The Infinite Realm — Android 2D Action RPG</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
+  html, body {
+    width: 100%; height: 100%; overflow: hidden;
+    background: #040610; color: #e2e8f0;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    touch-action: none;
+  }
+  #game-wrap { position: relative; width: 100%; height: 100%; overflow: hidden; }
+  @media (orientation: portrait) {
+    #game-wrap {
+      position: fixed;
+      top: 0;
+      left: 100vw;
+      width: 100vh;
+      height: 100vw;
+      transform: rotate(90deg);
+      transform-origin: top left;
+    }
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+
+  /* ==================== SPLASH LOGO SCREEN ==================== */
+  #splash-overlay {
+    position: absolute; inset: 0; z-index: 60;
+    background: radial-gradient(circle at 50% 42%, #1a1040 0%, #090d24 55%, #03040a 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: pointer; overflow: hidden;
+  }
+  #splash-overlay.hidden { display: none; }
+  .splash-moon {
+    position: absolute; right: 12%; top: 10%; width: 120px; height: 120px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #f43f5e, #881337 65%, #4c0519 100%);
+    box-shadow: 0 0 60px rgba(244, 63, 94, 0.55); opacity: 0.82;
+  }
+  .splash-ring {
+    position: absolute; width: min(380px, 68vh); height: min(380px, 68vh); border-radius: 50%;
+    border: 2px solid rgba(56, 189, 248, 0.35);
+    box-shadow: 0 0 40px rgba(168, 85, 247, 0.3), inset 0 0 40px rgba(56, 189, 248, 0.2);
+    animation: spinSlow 24s linear infinite;
+  }
+  @keyframes spinSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  .splash-emblem { position: relative; z-index: 2; text-align: center; padding: 16px; }
+  .splash-crest {
+    font-size: 26px; color: #c084fc; text-shadow: 0 0 18px #a855f7; margin-bottom: 4px;
+  }
+  .splash-title {
+    font-size: clamp(44px, 9vw, 82px); font-weight: 900; letter-spacing: 0.14em; line-height: 1;
+    background: linear-gradient(90deg, #38bdf8 0%, #e2e8f0 32%, #c084fc 62%, #f97316 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 6px 24px rgba(56, 189, 248, 0.45));
+  }
+  .splash-sub {
+    font-size: clamp(11px, 2vw, 15px); font-weight: 700; letter-spacing: 0.42em;
+    color: #fde68a; margin-top: 8px; text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+  }
+  .splash-tap {
+    position: relative; z-index: 2; margin-top: 28px;
+    padding: 10px 28px; border-radius: 999px;
+    background: rgba(15, 23, 42, 0.78);
+    border: 1px solid rgba(56, 189, 248, 0.6);
+    color: #38bdf8; font-size: 12px; font-weight: 800; letter-spacing: 0.2em;
+    animation: pulseTap 1.6s ease-in-out infinite;
+  }
+  @keyframes pulseTap { 0%,100% { opacity: 0.65; transform: scale(0.98); } 50% { opacity: 1; transform: scale(1.03); } }
+
+  /* ==================== HOME SCREEN UI (MATCHING UPLOADED UI) ==================== */
+  #home-overlay {
+    position: absolute; inset: 0; z-index: 45;
+    background: radial-gradient(circle at 48% 35%, #1e1b4b 0%, #0b1124 62%, #050711 100%);
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 10px 14px;
+  }
+  #home-overlay.hidden { display: none; }
+
+  .home-top {
+    display: flex; justify-content: space-between; align-items: center; gap: 10px;
+  }
+  .home-profile {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(10, 14, 28, 0.85); border: 1px solid rgba(251, 191, 36, 0.4);
+    border-radius: 10px; padding: 5px 12px 5px 6px; cursor: pointer;
+  }
+  .home-avatar {
+    width: 32px; height: 32px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 14px; color: #fff;
+    border: 1px solid rgba(255,255,255,0.4);
+  }
+  .home-pname { font-size: 12px; font-weight: 800; color: #f8fafc; }
+  .home-plv { font-size: 10px; color: #fbbf24; font-weight: 700; }
+
+  .home-currencies {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .curr-pill {
+    background: rgba(10, 14, 28, 0.85); border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 999px; padding: 4px 11px; font-size: 11px; font-weight: 700;
+    color: #e2e8f0; display: flex; align-items: center; gap: 5px;
+  }
+
+  .home-main {
+    flex: 1; display: flex; align-items: stretch; justify-content: space-between;
+    gap: 12px; min-height: 0; margin: 8px 0;
+  }
+  .home-nav {
+    width: 122px; display: flex; flex-direction: column; gap: 4px; overflow-y: auto;
+  }
+  .nav-item {
+    background: rgba(15, 23, 42, 0.72); border: 1px solid rgba(148, 163, 184, 0.18);
+    border-left: 3px solid transparent; border-radius: 6px;
+    padding: 6px 9px; font-size: 11px; font-weight: 700; color: #cbd5e1;
+    text-align: left; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  }
+  .nav-item.active, .nav-item:hover {
+    background: rgba(251, 146, 60, 0.18); border-left-color: #fb923c; color: #fff;
+  }
+
+  .home-center {
+    flex: 1; position: relative; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; text-align: center;
+    border-radius: 14px; border: 1px solid rgba(56, 189, 248, 0.2);
+    background: radial-gradient(circle at 50% 60%, rgba(56, 189, 248, 0.12), rgba(15, 23, 42, 0.4));
+    overflow: hidden; padding: 10px;
+  }
+  .hc-logo {
+    font-size: clamp(22px, 4vw, 34px); font-weight: 900; letter-spacing: 0.14em;
+    background: linear-gradient(90deg, #e2e8f0, #38bdf8, #c084fc);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .hc-sub { font-size: 9px; letter-spacing: 0.3em; color: #cbd5e1; margin-bottom: 8px; }
+  #home-hero-canvas { width: 180px; height: 150px; }
+  .hc-hero-tag {
+    font-size: 11px; font-weight: 800; color: #38bdf8;
+    background: rgba(15, 23, 42, 0.8); padding: 4px 12px; border-radius: 999px;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+  }
+
+  .home-right {
+    width: min(290px, 36vw); display: flex; flex-direction: column; justify-content: center; gap: 8px;
+  }
+  .story-card {
+    background: linear-gradient(135deg, rgba(30, 27, 75, 0.9), rgba(88, 28, 135, 0.6));
+    border: 1px solid rgba(192, 132, 252, 0.45); border-radius: 10px;
+    padding: 9px 12px; cursor: pointer;
+  }
+  .story-tag { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; color: #f472b6; }
+  .story-title { font-size: 15px; font-weight: 900; color: #fff; margin: 2px 0; }
+  .story-sub { font-size: 10px; color: #cbd5e1; }
+
+  .mode-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .mode-btn {
+    background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(148, 163, 184, 0.3);
+    border-radius: 8px; padding: 8px 4px; text-align: center; cursor: pointer;
+    color: #e2e8f0; font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
+  }
+  .mode-btn:hover { border-color: #38bdf8; background: rgba(30, 58, 138, 0.45); }
+  .mode-btn .m-ico { font-size: 16px; display: block; margin-bottom: 2px; }
+
+  .continue-btn {
+    background: linear-gradient(135deg, #b45309, #d97706);
+    border: 2px solid #fbbf24; border-radius: 10px;
+    padding: 11px; color: #fff; font-size: 14px; font-weight: 900; letter-spacing: 0.16em;
+    cursor: pointer; box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+  }
+  .continue-btn:active { transform: scale(0.98); }
+
+  .home-bottom {
+    display: flex; justify-content: center; gap: 10px;
+  }
+  .bot-tab {
+    background: rgba(15, 23, 42, 0.82); border: 1px solid rgba(148, 163, 184, 0.25);
+    border-radius: 8px; padding: 5px 14px; font-size: 11px; font-weight: 700;
+    color: #cbd5e1; cursor: pointer;
+  }
+  .bot-tab:hover { border-color: #fbbf24; color: #fff; }
+
+  /* ==================== SUB-MODALS (50 MAPS / CHARACTERS / BOSS HUNT) ==================== */
+  #sub-modal {
+    position: absolute; inset: 0; z-index: 55;
+    background: rgba(4, 7, 18, 0.94); backdrop-filter: blur(8px);
+    display: flex; flex-direction: column; padding: 14px 18px;
+  }
+  #sub-modal.hidden { display: none; }
+  .modal-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding-bottom: 8px; border-bottom: 1px solid rgba(56, 189, 248, 0.3); margin-bottom: 10px;
+  }
+  .modal-title { font-size: 16px; font-weight: 900; letter-spacing: 0.08em; color: #38bdf8; }
+  .modal-close {
+    background: rgba(239, 68, 68, 0.25); border: 1px solid #ef4444; color: #fecaca;
+    border-radius: 7px; padding: 5px 12px; font-size: 12px; font-weight: 800; cursor: pointer;
+  }
+  .modal-body { flex: 1; overflow-y: auto; }
+  .grid-cards {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px;
+  }
+  .item-card {
+    background: rgba(15, 23, 42, 0.88); border: 1px solid rgba(56, 189, 248, 0.28);
+    border-radius: 9px; padding: 9px; cursor: pointer; text-align: left;
+  }
+  .item-card.selected, .item-card:hover { border-color: #38bdf8; background: rgba(30, 58, 138, 0.45); }
+  .item-card.locked { opacity: 0.48; cursor: not-allowed; border-color: rgba(148,163,184,0.2); }
+  .item-card.locked:hover { background: rgba(15, 23, 42, 0.88); border-color: rgba(239,68,68,0.4); }
+  .ic-tag { font-size: 9px; font-weight: 800; color: #38bdf8; }
+  .ic-name { font-size: 12px; font-weight: 800; color: #f8fafc; margin: 2px 0; }
+  .ic-sub { font-size: 10px; color: #94a3b8; }
+
+  /* ==================== IN-GAME HUD & TOUCH CONTROLS ==================== */
+  #hud {
+    position: absolute; top: 0; left: 0; right: 0;
+    padding: 8px 14px;
+    display: flex; justify-content: space-between; align-items: flex-start;
+    pointer-events: none; z-index: 10;
+  }
+  .hud-panel {
+    background: rgba(10, 14, 28, 0.78);
+    border: 1px solid rgba(56, 189, 248, 0.35);
+    border-radius: 10px; padding: 7px 11px;
+    backdrop-filter: blur(6px); min-width: 190px;
+  }
+  .hud-panel.mech-mode { border-color: rgba(34, 211, 238, 0.85); box-shadow: 0 0 18px rgba(34, 211, 238, 0.35); }
+  .hud-name { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 800; color: #f8fafc; margin-bottom: 4px; }
+  .hud-name span.badge { font-size: 9px; padding: 1px 6px; border-radius: 4px; background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+  .bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 10px; font-weight: 700; }
+  .bar-row:last-child { margin-bottom: 0; }
+  .bar-label { width: 26px; color: #94a3b8; }
+  .bar-track { flex: 1; height: 7px; background: rgba(15, 23, 42, 0.9); border-radius: 4px; overflow: hidden; }
+  .bar-fill { height: 100%; transition: width 0.12s ease-out; }
+  .bar-hp { background: linear-gradient(90deg, #ef4444, #f97316); }
+  .bar-mp { background: linear-gradient(90deg, #0ea5e9, #38bdf8); }
+  .bar-mech { background: linear-gradient(90deg, #06b6d4, #22d3ee); }
+  .bar-exp { background: linear-gradient(90deg, #22c55e, #84cc16); }
+  #minimap {
+    width: 118px; height: 34px; background: rgba(10, 14, 28, 0.85);
+    border: 1px solid rgba(56, 189, 248, 0.45); border-radius: 6px;
+  }
+  .bar-val { width: 48px; text-align: right; color: #cbd5e1; font-variant-numeric: tabular-nums; }
+
+  #quest-tracker {
+    position: absolute; top: 82px; left: 14px; width: 195px; pointer-events: none; z-index: 10;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+  .qt-box {
+    background: rgba(10, 14, 28, 0.72); border-left: 3px solid #f97316;
+    border-radius: 6px; padding: 5px 8px; backdrop-filter: blur(4px);
+  }
+  .qt-box.side { border-left-color: #38bdf8; }
+  .qt-head { font-size: 9px; font-weight: 900; color: #fb923c; }
+  .qt-box.side .qt-head { color: #38bdf8; }
+  .qt-desc { font-size: 9px; color: #e2e8f0; line-height: 1.25; }
+  .side-icons { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; pointer-events: auto; width: 32px; }
+  .side-ico {
+    width: 32px; height: 32px; border-radius: 7px;
+    background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(251, 191, 36, 0.45);
+    color: #fde68a; font-size: 14px; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .hud-center {
+    text-align: center; background: rgba(10, 14, 28, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.25); border-radius: 999px; padding: 4px 14px;
+  }
+  .stage-title { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; color: #38bdf8; }
+  .stage-sub { font-size: 9px; color: #94a3b8; }
+
+  .hud-actions { display: flex; gap: 6px; pointer-events: auto; }
+  .icon-btn {
+    background: rgba(15, 23, 42, 0.85); color: #e2e8f0;
+    border: 1px solid rgba(148, 163, 184, 0.35); border-radius: 8px;
+    padding: 6px 10px; font-size: 11px; font-weight: 700; cursor: pointer;
+  }
+
+  #boss-hud {
+    position: absolute; top: 64px; left: 50%; transform: translateX(-50%);
+    width: min(460px, 78vw); pointer-events: none; z-index: 10; display: none;
+    background: rgba(10, 10, 20, 0.84); border: 1px solid rgba(244, 63, 94, 0.5);
+    border-radius: 10px; padding: 6px 12px;
+  }
+  .boss-head { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .boss-name { font-size: 11px; font-weight: 900; color: #fda4af; text-transform: uppercase; }
+  .boss-phase { font-size: 10px; font-weight: 700; color: #fbbf24; }
+  .boss-track { height: 9px; background: rgba(15, 23, 42, 0.95); border-radius: 5px; overflow: hidden; }
+  .boss-fill { height: 100%; background: linear-gradient(90deg, #be123c, #f43f5e, #fb923c); transition: width 0.1s linear; }
+  .stagger-track { height: 4px; background: rgba(15,23,42,0.9); border-radius: 2px; overflow: hidden; margin-top: 3px; }
+  .stagger-fill { height: 100%; background: #facc15; transition: width 0.1s linear; }
+
+  #sys-banner {
+    position: absolute; top: 32%; left: 50%; transform: translate(-50%, -50%) scale(0.9);
+    background: rgba(6, 18, 36, 0.92); border-top: 2px solid #22d3ee; border-bottom: 2px solid #22d3ee;
+    padding: 10px 28px; text-align: center; opacity: 0; pointer-events: none; z-index: 25;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+  #sys-banner.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  #sys-banner h2 { font-size: 17px; font-weight: 900; letter-spacing: 0.16em; color: #22d3ee; }
+  #sys-banner p { font-size: 11px; color: #cbd5e1; margin-top: 2px; }
+
+  #dialogue-box {
+    position: absolute; bottom: 118px; left: 50%; transform: translateX(-50%);
+    width: min(580px, 88vw); background: rgba(8, 12, 24, 0.94);
+    border: 1px solid rgba(56, 189, 248, 0.5); border-radius: 12px; padding: 12px 16px;
+    z-index: 30; display: none;
+  }
+  .dlg-speaker { font-size: 11px; font-weight: 900; color: #38bdf8; text-transform: uppercase; margin-bottom: 3px; }
+  .dlg-text { font-size: 13px; line-height: 1.4; color: #f1f5f9; margin-bottom: 8px; }
+  .dlg-actions { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+  .dlg-btn { background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none; border-radius: 7px; padding: 6px 12px; font-size: 11px; font-weight: 700; cursor: pointer; }
+  .dlg-btn.alt { background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(148,163,184,0.4); }
+
+  #touch-controls {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    padding: 8px 18px 14px; display: flex; justify-content: space-between; align-items: flex-end;
+    pointer-events: none; z-index: 20;
+  }
+  /* Left Virtual Analog Joystick */
+  #joy-base {
+    position: relative; width: 108px; height: 108px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(15,23,42,0.55) 70%, rgba(255,255,255,0.18) 100%);
+    border: 2px solid rgba(255, 255, 255, 0.28);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.45);
+    pointer-events: auto; touch-action: none;
+  }
+  #joy-knob {
+    position: absolute; left: 50%; top: 50%; width: 46px; height: 46px;
+    margin: -23px 0 0 -23px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #e2e8f0, #94a3b8);
+    border: 2px solid rgba(255,255,255,0.8);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    pointer-events: none;
+  }
+
+  /* Right Action Cluster: Q E R F + Dash + Jump + Big Attack */
+  .ctrl-right {
+    display: flex; align-items: flex-end; gap: 12px; pointer-events: none;
+  }
+  .skill-row {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 4px; pointer-events: auto;
+  }
+  .orb-btn {
+    position: relative; width: 44px; height: 44px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.55); color: #fff;
+    font-size: 15px; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.55); touch-action: none; cursor: pointer;
+  }
+  .orb-btn:active, .orb-btn.active { transform: scale(0.9); filter: brightness(1.3); }
+  .orb-q { background: radial-gradient(circle, #38bdf8, #0369a1); border-color: #7dd3fc; }
+  .orb-e { background: radial-gradient(circle, #fb7185, #9f1239); border-color: #fda4af; }
+  .orb-r { background: radial-gradient(circle, #c084fc, #581c87); border-color: #d8b4fe; }
+  .orb-f { background: radial-gradient(circle, #facc15, #a16207); border-color: #fde047; }
+  .orb-key {
+    position: absolute; bottom: -11px; left: 50%; transform: translateX(-50%);
+    background: rgba(10,14,28,0.9); border: 1px solid rgba(148,163,184,0.45);
+    border-radius: 4px; padding: 0 4px; font-size: 8px; font-weight: 800; color: #e2e8f0;
+  }
+
+  .combat-arc {
+    position: relative; width: 126px; height: 118px; pointer-events: none;
+  }
+  .arc-btn {
+    position: absolute; border-radius: 50%; color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: auto; touch-action: none; cursor: pointer;
+  }
+  .arc-btn:active, .arc-btn.active { transform: scale(0.92); filter: brightness(1.25); }
+  .btn-main-atk {
+    right: 0; bottom: 0; width: 74px; height: 74px; font-size: 28px;
+    background: radial-gradient(circle at 35% 35%, rgba(51,65,85,0.85), rgba(15,23,42,0.95));
+    border: 3px solid #fbbf24; box-shadow: 0 0 18px rgba(251,191,36,0.45);
+  }
+  .btn-arc-jump {
+    right: 6px; top: 0; width: 44px; height: 44px; font-size: 16px; font-weight: 900;
+    background: rgba(15, 23, 42, 0.8); border: 2px solid rgba(255,255,255,0.5);
+  }
+  .btn-arc-dash {
+    left: 2px; top: 24px; width: 44px; height: 44px; font-size: 16px;
+    background: rgba(15, 23, 42, 0.8); border: 2px solid rgba(255,255,255,0.5);
+  }
+
+  /* ==================== CINEMATIC IN-GAME CUTSCENES ==================== */
+  #cutscene-overlay {
+    position: absolute; inset: 0; z-index: 52;
+    background: #02040a; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  #cutscene-overlay.hidden { display: none; }
+  .cs-bar {
+    height: 44px; background: #000; display: flex; align-items: center; justify-content: space-between;
+    padding: 0 18px; border-bottom: 1px solid rgba(56,189,248,0.25); z-index: 2;
+  }
+  .cs-bar.bottom {
+    height: auto; min-height: 92px; border-bottom: none; border-top: 1px solid rgba(56,189,248,0.3);
+    padding: 10px 18px; gap: 14px;
+  }
+  .cs-act { font-size: 10px; font-weight: 900; letter-spacing: 0.2em; color: #38bdf8; }
+  .cs-skip {
+    background: rgba(30,41,59,0.85); border: 1px solid rgba(148,163,184,0.4); color: #e2e8f0;
+    border-radius: 6px; padding: 4px 11px; font-size: 10px; font-weight: 800; cursor: pointer;
+  }
+  #cs-canvas { flex: 1; width: 100%; min-height: 0; display: block; }
+  .cs-text-wrap { flex: 1; }
+  .cs-speaker { font-size: 11px; font-weight: 900; color: #fbbf24; letter-spacing: 0.08em; margin-bottom: 3px; }
+  .cs-line { font-size: 13px; color: #f1f5f9; line-height: 1.4; }
+  .cs-next {
+    background: linear-gradient(135deg, #0284c7, #2563eb); color: #fff; border: none;
+    border-radius: 8px; padding: 9px 18px; font-size: 12px; font-weight: 800; cursor: pointer; white-space: nowrap;
+  }
+
+  #ending-overlay {
+    position: absolute; inset: 0; z-index: 58;
+    background: radial-gradient(circle at 50% 35%, rgba(15, 23, 42, 0.96), rgba(4, 6, 14, 0.99));
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 20px; text-align: center;
+  }
+  #ending-overlay.hidden { display: none; }
+</style>
+</head>
+<body>
+<div id="game-wrap">
+  <canvas id="game"></canvas>
+
+  <!-- In-Game HUD -->
+  <div id="hud">
+    <div id="player-hud" class="hud-panel">
+      <div class="hud-name">
+        <span id="hud-char-name">ARUVEX</span>
+        <span id="hud-char-badge" class="badge">LV.28 • ON FOOT</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label" id="lbl-hp">HP</span>
+        <div class="bar-track"><div id="bar-hp" class="bar-fill bar-hp" style="width:100%"></div></div>
+        <span class="bar-val" id="val-hp">328/328</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label" id="lbl-mp">MP</span>
+        <div class="bar-track"><div id="bar-mp" class="bar-fill bar-mp" style="width:100%"></div></div>
+        <span class="bar-val" id="val-mp">120/120</span>
+      </div>
+      <div class="bar-row">
+        <span class="bar-label">EXP</span>
+        <div class="bar-track"><div id="bar-exp" class="bar-fill bar-exp" style="width:0%"></div></div>
+        <span class="bar-val" id="val-exp">0%</span>
+      </div>
+    </div>
+
+    <div class="hud-center">
+      <div class="stage-title" id="hud-stage">MAP 01 • FLOATING SKY CITY</div>
+      <div class="stage-sub" id="hud-quest">Defeat corrupted sentries &amp; reach the portal</div>
+    </div>
+
+    <div class="hud-actions">
+      <canvas id="minimap" width="118" height="34"></canvas>
+      <button class="icon-btn" id="btn-home">🏠 Home</button>
+      <button class="icon-btn" id="btn-map">🗺️ 50 Maps</button>
+      <button class="icon-btn" id="btn-mute">🔊</button>
+    </div>
+  </div>
+
+  <!-- Left Quest Tracker & Side Icons (Matching In-Game Screenshot) -->
+  <div id="quest-tracker">
+    <div class="qt-box">
+      <div class="qt-head">🟠 Main Quest</div>
+      <div class="qt-desc" id="qt-main">Infiltrate the Region &amp; Defeat Enemies</div>
+    </div>
+    <div class="qt-box side">
+      <div class="qt-head">🔵 Side Quest</div>
+      <div class="qt-desc" id="qt-side">Collect Age of Gods Relics (0/3)</div>
+    </div>
+    <div class="side-icons">
+      <button class="side-ico" id="side-inv" title="Characters">🎒</button>
+      <button class="side-ico" id="side-qst" title="Storyline">📜</button>
+      <button class="side-ico" id="side-set" title="Home">⚙️</button>
+    </div>
+  </div>
+
+  <!-- Boss HUD -->
+  <div id="boss-hud">
+    <div class="boss-head">
+      <span class="boss-name" id="boss-name">BOSS</span>
+      <span class="boss-phase" id="boss-phase">PHASE 1</span>
+    </div>
+    <div class="boss-track"><div id="boss-hp" class="boss-fill" style="width:100%"></div></div>
+    <div class="stagger-track"><div id="boss-stagger" class="stagger-fill" style="width:0%"></div></div>
+  </div>
+
+  <div id="sys-banner">
+    <h2 id="sys-title">MECH SYSTEMS ONLINE</h2>
+    <p id="sys-sub">VAYRUKA REACTOR ENGAGED</p>
+  </div>
+
+  <div id="dialogue-box">
+    <div class="dlg-speaker" id="dlg-speaker">SYSTEM</div>
+    <div class="dlg-text" id="dlg-text">...</div>
+    <div class="dlg-actions" id="dlg-actions"></div>
+  </div>
+
+  <!-- Touch Controls (Joystick + Q E R F + Dash / Jump / Attack) -->
+  <div id="touch-controls">
+    <div id="joy-base"><div id="joy-knob"></div></div>
+    <div class="ctrl-right">
+      <div class="skill-row">
+        <button class="orb-btn orb-q" data-key="attack">⚔️<span class="orb-key">Q</span></button>
+        <button class="orb-btn orb-e" data-key="heavy">🔥<span class="orb-key">E</span></button>
+        <button class="orb-btn orb-r" data-key="skill">🌀<span class="orb-key">R</span></button>
+        <button class="orb-btn orb-f" id="btn-mech" data-key="mech">✨<span class="orb-key">F</span></button>
+      </div>
+      <div class="combat-arc">
+        <button class="arc-btn btn-arc-dash" data-key="dash">💨</button>
+        <button class="arc-btn btn-arc-jump" data-key="jump">⬆</button>
+        <button class="arc-btn btn-main-atk" data-key="attack">⚔️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. START PHASE: NEXUS LOGO SPLASH -->
+  <div id="splash-overlay">
+    <div class="splash-moon"></div>
+    <div class="splash-ring"></div>
+    <div class="splash-emblem">
+      <div class="splash-crest">✦ ❖ ✦</div>
+      <h1 class="splash-title">NEXUS</h1>
+      <div class="splash-sub">THE INFINITE REALM</div>
+      <div class="splash-tap">TAP TO ENTER NEXUS</div>
+    </div>
+  </div>
+
+  <!-- 2. HOME SCREEN UI (MATCHING GIVEN UI) -->
+  <div id="home-overlay" class="hidden">
+    <div class="home-top">
+      <div class="home-profile" id="btn-profile">
+        <div class="home-avatar" id="home-avatar" style="background:#0284c7;">A</div>
+        <div>
+          <div class="home-pname" id="home-pname">Aruvex</div>
+          <div class="home-plv">Lv. 28 • The Riftblade</div>
+        </div>
+      </div>
+      <div class="home-currencies">
+        <div class="curr-pill" id="home-gold">🪙 500</div>
+        <div class="curr-pill">💎 3,460</div>
+        <div class="curr-pill">⚡ 120/120</div>
+      </div>
+    </div>
+
+    <div class="home-main">
+      <div class="home-nav">
+        <button class="nav-item active" data-nav="home">🏠 Home</button>
+        <button class="nav-item" data-nav="characters">⚔️ Characters</button>
+        <button class="nav-item" data-nav="skills">✨ Skills</button>
+        <button class="nav-item" data-nav="quests">📜 Quests</button>
+        <button class="nav-item" data-nav="map">🗺️ Map (50)</button>
+        <button class="nav-item" data-nav="codex">📖 Codex</button>
+        <button class="nav-item" data-nav="system">⚙️ System</button>
+      </div>
+
+      <div class="home-center">
+        <div class="hc-logo">NEXUS</div>
+        <div class="hc-sub">THE INFINITE REALM</div>
+        <canvas id="home-hero-canvas" width="180" height="150"></canvas>
+        <div class="hc-hero-tag" id="hc-hero-tag">ARUVEX • AZURE RIFTBLADE &amp; EMBER FANG</div>
+      </div>
+
+      <div class="home-right">
+        <div class="story-card" id="btn-story-continue">
+          <div class="story-tag">MAIN STORY</div>
+          <div class="story-title">Chapter 5</div>
+          <div class="story-sub">The Demon Resonance • 50 Regions</div>
+        </div>
+        <div class="mode-row">
+          <button class="mode-btn" id="btn-realm-map"><span class="m-ico">🗺️</span>REALM MAP</button>
+          <button class="mode-btn" id="btn-dungeons"><span class="m-ico">⛩️</span>DUNGEONS</button>
+          <button class="mode-btn" id="btn-boss-hunt"><span class="m-ico">🐉</span>BOSS HUNT</button>
+        </div>
+        <button class="continue-btn" id="btn-continue">▶ CONTINUE</button>
+      </div>
+    </div>
+
+    <div class="home-bottom">
+      <button class="bot-tab" data-nav="characters">👥 Party</button>
+      <button class="bot-tab" data-nav="skills">🔨 Forge</button>
+      <button class="bot-tab" data-nav="quests">🛒 Shop</button>
+      <button class="bot-tab" data-nav="codex">🐉 Bestiary</button>
+      <button class="bot-tab" data-nav="map">🌐 50 Regions</button>
+    </div>
+  </div>
+
+  <!-- Sub-Modal (50 Maps / Characters / Boss Hunt / Codex / Quests) -->
+  <div id="sub-modal" class="hidden">
+    <div class="modal-head">
+      <div class="modal-title" id="modal-title">REALM MAP — 50 ENVIRONMENTS</div>
+      <button class="modal-close" id="modal-close">✕ Close</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+
+  <!-- Cinematic Story Cutscene Overlay -->
+  <div id="cutscene-overlay" class="hidden">
+    <div class="cs-bar">
+      <span class="cs-act" id="cs-act">ACT I • CUTSCENE</span>
+      <button class="cs-skip" id="cs-skip">Skip ⏭</button>
+    </div>
+    <canvas id="cs-canvas" width="800" height="300"></canvas>
+    <div class="cs-bar bottom">
+      <div class="cs-text-wrap">
+        <div class="cs-speaker" id="cs-speaker">NARRATOR</div>
+        <div class="cs-line" id="cs-line">...</div>
+      </div>
+      <button class="cs-next" id="cs-next">Next ▶</button>
+    </div>
+  </div>
+
+  <!-- Ending Overlay -->
+  <div id="ending-overlay" class="hidden">
+    <div class="splash-sub" id="end-tag" style="letter-spacing:0.2em;color:#38bdf8;">ENDING UNLOCKED</div>
+    <h1 class="hc-logo" id="end-title" style="font-size:36px;margin:8px 0;">A NEW BEGINNING</h1>
+    <p id="end-desc" style="max-width:520px;font-size:13px;color:#cbd5e1;line-height:1.5;margin-bottom:18px;"></p>
+    <div style="display:flex;gap:10px;">
+      <button class="continue-btn" id="btn-replay" style="padding:10px 20px;">PLAY AGAIN</button>
+      <button class="icon-btn" id="btn-end-home" style="padding:10px 18px;">HOME</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+
+  // ==================== AUDIO SYNTH ====================
+  const AudioSys = {
+    ctx: null, muted: false,
+    init() {
+      if (!this.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) this.ctx = new AC();
+      }
+      if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    },
+    tone(freq, dur, type = 'sine', vol = 0.11, slide = null) {
+      if (this.muted || !this.ctx) return;
+      const t = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const g = this.ctx.createGain();
+      osc.type = type; osc.frequency.setValueAtTime(freq, t);
+      if (slide) osc.frequency.exponentialRampToValueAtTime(slide, t + dur);
+      g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.connect(g); g.connect(this.ctx.destination);
+      osc.start(t); osc.stop(t + dur);
+    },
+    slash() { this.tone(520, 0.09, 'sawtooth', 0.1, 140); },
+    heavy() { this.tone(240, 0.18, 'square', 0.14, 65); },
+    hit() { this.tone(130, 0.11, 'triangle', 0.15, 45); },
+    jump() { this.tone(260, 0.12, 'sine', 0.08, 480); },
+    dash() { this.tone(420, 0.08, 'triangle', 0.07, 190); },
+    plasma() { this.tone(880, 0.22, 'sawtooth', 0.12, 180); },
+    mechOn() { this.tone(110, 0.45, 'sawtooth', 0.15, 330); },
+    roar() { this.tone(95, 0.45, 'sawtooth', 0.17, 42); }
+  };
+
+  // ==================== CHARACTERS (From Uploaded Sheets) ====================
+  const CHARACTERS = [
+    { id: 'aruvex', unlockMap: 0, name: 'ARUVEX', role: 'The Riftblade', weapon: 'Azure Riftblade & Ember Fang', skill: 'Twin-Star Cataclysm',
+      hp: 328, mp: 120, speed: 325, atk: 28, primary: '#1e293b', accent: '#f97316', energy: '#38bdf8', hair: '#cbd5e1', skin: '#f1c27d', type: 'dual' },
+    { id: 'kalika', unlockMap: 0, name: 'KALIKA', role: 'Underworld Sorceress', weapon: 'Niryana Danda', skill: 'Hands of Tartarus',
+      hp: 265, mp: 190, speed: 300, atk: 27, primary: '#3b0764', accent: '#f43f5e', energy: '#c084fc', hair: '#f8fafc', skin: '#f3d2c1', type: 'staff' },
+    { id: 'aarohini', unlockMap: 23, name: 'AAROHINI', role: 'Cosmic Blossom', weapon: 'Kamala Chakra', skill: 'Lotus Blast',
+      hp: 270, mp: 180, speed: 305, atk: 25, primary: '#831843', accent: '#f472b6', energy: '#fbbf24', hair: '#1e1b4b', skin: '#e0ac69', type: 'chakra' },
+    { id: 'vayunitra', unlockMap: 11, name: 'VAYUNITRA', role: 'Zero Ascendant', weapon: 'Wind Constructs', skill: 'Telekinetic Push',
+      hp: 295, mp: 150, speed: 360, atk: 26, primary: '#0f766e', accent: '#e2e8f0', energy: '#2dd4bf', hair: '#134e4a', skin: '#e0ac69', type: 'dual' },
+    { id: 'aiketzo', unlockMap: 1, name: 'AIKETZO', role: 'The Exiled Hunter', weapon: 'Agni Blade & Chain', skill: 'Agni Slash',
+      hp: 340, mp: 110, speed: 345, atk: 29, primary: '#1c1917', accent: '#dc2626', energy: '#f97316', hair: '#f8fafc', skin: '#c68642', type: 'dual' },
+    { id: 'arjunvir', unlockMap: 21, name: 'ARJUNVIR', role: 'Boundless Guardian', weapon: 'Shakti Blade', skill: 'Astral Slash',
+      hp: 400, mp: 120, speed: 295, atk: 28, primary: '#1e3a8a', accent: '#94a3b8', energy: '#60a5fa', hair: '#0f172a', skin: '#c68642', type: 'sword' },
+    { id: 'penshan', unlockMap: 6, name: 'PENSHAN', role: 'Illusion Archer', weapon: 'Bow Yoor Dhanu', skill: 'Mirage Shot',
+      hp: 285, mp: 145, speed: 340, atk: 25, primary: '#064e3b', accent: '#fbbf24', energy: '#34d399', hair: '#78350f', skin: '#f1c27d', type: 'bow' },
+    { id: 'rekha', unlockMap: 13, name: 'REKHA', role: 'The Shadow Blade', weapon: 'Twin Shadow Katana', skill: 'Vajra Slash',
+      hp: 295, mp: 135, speed: 370, atk: 28, primary: '#312e81', accent: '#f8fafc', energy: '#a855f7', hair: '#020617', skin: '#e0ac69', type: 'dual' },
+    { id: 'aarani', unlockMap: 8, name: 'AARANI', role: 'Blade of Dawn', weapon: 'Dual Fire Blades', skill: 'Surya Chakra',
+      hp: 315, mp: 130, speed: 350, atk: 27, primary: '#9a3412', accent: '#facc15', energy: '#fb923c', hair: '#27272a', skin: '#c68642', type: 'dual' },
+    { id: 'veerashunya', unlockMap: 26, name: 'VEERASHUNYA', role: 'Psionic Warrior', weapon: 'Chitra-Blade', skill: 'Shunya Awakening',
+      hp: 310, mp: 160, speed: 355, atk: 28, primary: '#0f766e', accent: '#fbbf24', energy: '#2dd4bf', hair: '#e2e8f0', skin: '#e0ac69', type: 'sword' }
+  ];
+  let selectedCharIdx = 0;
+
+  // ==================== ALL 50 ENVIRONMENT MAPS (From Uploaded Sheet) ====================
+  const MAP_NAMES = [
+    'Floating Sky City', 'Ancient Ruins', 'Forest of Giants', 'Crystal Cavern', 'Volcano Core',
+    'Desert Wastes', 'Sunken Temple', 'Bamboo Village', 'Snow Peaks', 'Stormy Cliffs',
+    'Sacred Waterfall', 'Mystic Forest', 'Forgotten Castle', 'Lava Bridge', 'Dark Swamp',
+    'Moonlit Lake', 'Neon Cyber City', 'Sky Train Station', 'Sandstorm Ruins', 'Giant Tree Realm',
+    'Underground Mines', 'Frozen Tundra', 'Celestial Arena', 'Crimson Forest', 'Abandoned Fort',
+    'Clockwork Factory', 'Toxic Wasteland', 'Rainy Village', 'Floating Islands', 'Eclipse Temple',
+    'Deep Ocean', 'Ghost Town', 'Sacred Mountain', 'Canyon Bridge', 'Autumn Valley',
+    'Ruined Colosseum', 'Starfall Plains', 'Misty Swamp', 'Dragon Shrine', 'Icy Fortress',
+    'Hollow Dimension', 'Celestial Gardens', 'Wasteland Highway', 'Sandstone City', 'Lightning Tower',
+    'Spirit Realm', 'Mecha Dockyard', 'Ruined Cathedral', 'Crystal Skyway', 'Final Dimension'
+  ];
+
+  const BIOMES = [
+    { skyTop:'#0c1b3a', skyBot:'#1e3a8a', ground:'#1e293b', accent:'#38bdf8', pt:'wind' },
+    { skyTop:'#062019', skyBot:'#14532d', ground:'#1c261d', accent:'#4ade80', pt:'petal' },
+    { skyTop:'#1f0808', skyBot:'#7c2d12', ground:'#291714', accent:'#f97316', pt:'ember' },
+    { skyTop:'#1e1508', skyBot:'#92400e', ground:'#382613', accent:'#fbbf24', pt:'wind' },
+    { skyTop:'#081c2e', skyBot:'#1e40af', ground:'#1e293b', accent:'#93c5fd', pt:'snow' },
+    { skyTop:'#16082c', skyBot:'#4c1d95', ground:'#190f2b', accent:'#c084fc', pt:'void' },
+    { skyTop:'#091521', skyBot:'#155e75', ground:'#1e293b', accent:'#22d3ee', pt:'spark' },
+    { skyTop:'#0c1910', skyBot:'#3f6212', ground:'#1a2614', accent:'#a3e635', pt:'spark' }
+  ];
+
+  const BOSS_MAP = {
+    4:  { name: 'LAVAFORGED BEAST', hp: 520, color: '#ea580c', size: 1.35, type: 'lava' },
+    6:  { name: 'NEELA — ABYSS SERPENT', hp: 650, color: '#0284c7', size: 1.5, type: 'serpent' },
+    8:  { name: 'AGNIVRAKA — ASHEN BEHEMOTH', hp: 900, color: '#dc2626', size: 1.9, type: 'colossus' },
+    12: { name: 'NIRL — SHADOW KNIGHT', hp: 780, color: '#7e22ce', size: 1.55, type: 'knight' },
+    15: { name: 'MEOW — FELINE KING', hp: 750, color: '#eab308', size: 1.45, type: 'beast' },
+    18: { name: 'AMON — SAND TITAN', hp: 850, color: '#d97706', size: 1.75, type: 'demon' },
+    19: { name: 'VRIK — WORLD TREE', hp: 920, color: '#16a34a', size: 1.85, type: 'golem' },
+    21: { name: 'HIRANYA — BOTTOMLESS ONE', hp: 980, color: '#f59e0b', size: 1.85, type: 'golem' },
+    22: { name: 'SOLVAR — SUN ETERNAL', hp: 1020, color: '#fbbf24', size: 1.7, type: 'knight' },
+    23: { name: 'KURM — ANCIENT TORTOISE', hp: 1050, color: '#0d9488', size: 1.9, type: 'golem' },
+    25: { name: 'AGNIVRAKA — COLOSSUS CORE', hp: 1120, color: '#dc2626', size: 2.0, type: 'colossus' },
+    28: { name: 'VIJRA — THE SKY RULER', hp: 1200, color: '#38bdf8', size: 1.95, type: 'vijra' },
+    29: { name: 'RAGANADA — DOOM ORCHESTRA', hp: 1250, color: '#a855f7', size: 1.85, type: 'raganada' },
+    30: { name: 'NIDRA — ABYSSAL SOVEREIGN', hp: 1300, color: '#6366f1', size: 2.05, type: 'nidra' },
+    31: { name: 'SHOONYAPALA — GRAVETIDE SOVEREIGN', hp: 1340, color: '#38bdf8', size: 1.9, type: 'knight' },
+    32: { name: 'KALIKA — QUEEN OF THE UNDERWORLD', hp: 1220, color: '#a855f7', size: 1.55, type: 'knight' },
+    37: { name: 'RAKSHOR — BLOOD KING (DEMON CASTLE)', hp: 1320, color: '#b91c1c', size: 1.85, type: 'demon' },
+    40: { name: 'VYSAKA — THE UNDYING', hp: 1380, color: '#e11d48', size: 1.9, type: 'vysaka' },
+    44: { name: 'VIJRA — SKY SOVEREIGN', hp: 1380, color: '#60a5fa', size: 2.0, type: 'vijra' },
+    47: { name: 'VYSAKA — BONE CATHEDRAL', hp: 1450, color: '#be123c', size: 2.0, type: 'vysaka' },
+    49: { name: 'VORANTH — THE REALM DEVOURER', hp: 1650, color: '#0ea5e9', size: 1.85, type: 'voranth' }
+  };
+
+  const STAGES = MAP_NAMES.map((name, i) => {
+    const b = BIOMES[i % BIOMES.length];
+    const act = Math.floor(i / 10) + 1;
+    const bossCfg = BOSS_MAP[i] || null;
+    const hasMech = (i === 25 || i === 46 || i === 49);
+    return {
+      id: i,
+      code: `MAP ${String(i + 1).padStart(2, '0')}`,
+      act: `ACT ${act}`,
+      name,
+      quest: bossCfg ? `Defeat ${bossCfg.name.split('—')[0].trim()}` : `Clear corrupted monsters & enter portal`,
+      skyTop: b.skyTop, skyBot: b.skyBot, ground: b.ground, accent: b.accent, particle: b.pt,
+      hasMech, boss: bossCfg
+    };
+  });
+
+  // ==================== STORYLINE ENGINE (ACTS I–V) ====================
+  const storyState = { clearedMaps: new Set(), kalikaAlliance: false, unlockedMaxMap: 0 };
+  try {
+    const savedMax = parseInt(localStorage.getItem('nexus_unlocked_max') || '0', 10);
+    if (!isNaN(savedMax) && savedMax >= 0) storyState.unlockedMaxMap = Math.min(49, savedMax);
+  } catch (_) {}
+  function unlockNextMap(completedIdx) {
+    storyState.clearedMaps.add(completedIdx);
+    if (completedIdx + 1 > storyState.unlockedMaxMap && completedIdx + 1 < STAGES.length) {
+      storyState.unlockedMaxMap = completedIdx + 1;
+      try { localStorage.setItem('nexus_unlocked_max', String(storyState.unlockedMaxMap)); } catch (_) {}
+      const newlyUnlocked = CHARACTERS.find(c => c.unlockMap === storyState.unlockedMaxMap);
+      if (newlyUnlocked) {
+        showBanner(`${newlyUnlocked.name} SAVED!`, `JOINED YOUR ALLIANCE • ${newlyUnlocked.role.toUpperCase()}`);
+      }
+    }
+  }
+  const CUTSCENES = {
+    0: {
+      act: 'ACT I • THE FIRST FRACTURE',
+      scenes: [
+        { bg: '#0c1b3a', fg: '#38bdf8', mode: 'hero', sp: 'NARRATOR', txt: 'Year 2189. Millions enter NEXUS—a living virtual universe of 50 regions.' },
+        { bg: '#1e1b4b', fg: '#f97316', mode: 'glitch', sp: 'ARUVEX', txt: '"A hidden voice just called my name... and corrupted sentries are blocking the Sky City!"' }
+      ]
+    },
+    4: {
+      act: 'ACT I • THE VOLCANO CORE',
+      scenes: [
+        { bg: '#2b0909', fg: '#f97316', mode: 'boss', sp: 'LAVAFORGED BEAST', txt: 'The magma cavern trembles as the first major boss rises from the molten core!' },
+        { bg: '#1f0808', fg: '#fbbf24', mode: 'hero', sp: 'ARUVEX', txt: '"Stay sharp. This creature is more than just game data..."' }
+      ]
+    },
+    19: {
+      act: 'ACT II • THE AGE OF GODS',
+      scenes: [
+        { bg: '#0b1936', fg: '#60a5fa', mode: 'founders', sp: 'ALIKA ARCHIVE', txt: 'Six holograms materialize: Jayan, Alika, Arin, Neel, Setu, and Eshan—the Age of Gods founders.' },
+        { bg: '#1e0b2e', fg: '#f43f5e', mode: 'voranth', sp: 'ALIKA ARCHIVE', txt: '"Voranth was the first human mind integrated into NEXUS... and he was left trapped inside."' }
+      ]
+    },
+    25: {
+      act: 'ACT III • VAYRUKA UNLEASHED',
+      scenes: [
+        { bg: '#081c2e', fg: '#22d3ee', mode: 'mech', sp: 'JAYAN LOG', txt: 'Deep inside Clockwork Factory, the 18.5-meter combat mech VAYRUKA powers on!' },
+        { bg: '#2b0909', fg: '#ef4444', mode: 'boss', sp: 'AGNIVRAKA', txt: 'The Ashen Behemoth roars! Approach VAYRUKA and tap F (MECH) to engage colossal battle!' }
+      ]
+    },
+    32: {
+      act: 'ACT IV • KALIKA’S BETRAYAL',
+      scenes: [
+        { bg: '#1e0836', fg: '#c084fc', mode: 'boss', sp: 'KALIKA', txt: '"Trust? You gave me memories. Voranth gave me eternity!"' },
+        { bg: '#130724', fg: '#f43f5e', mode: 'hero', sp: 'ARUVEX', txt: '"I won’t let you hand the God Seal to Voranth, Kalika!"' }
+      ]
+    },
+    49: {
+      act: 'ACT V • THE FINAL DIMENSION',
+      scenes: [
+        { bg: '#090314', fg: '#f43f5e', mode: 'voranth', sp: 'VORANTH', txt: '"I watched worlds vanish and players leave. Only by freezing reality can we end all loss!"' },
+        { bg: '#0f172a', fg: '#38bdf8', mode: 'hero', sp: 'ARUVEX', txt: '"A world without change isn’t alive. Everyone’s counting on us—let’s end this!"' }
+      ]
+    }
+  };
+
+  const STORY_INTRO = {
+    0:  { sp: 'ACT I • THE BEGINNING', txt: 'Aruvex enters NEXUS seeking adventure in Floating Sky City. Suddenly, reality glitches—corrupted monsters block the plaza!' },
+    4:  { sp: 'ACT I • THE FIRST BOSS', txt: 'Volcano Core trembles. Ahead waits the Lavaforged Beast—the guardian that holds the first warning of NEXUS.' },
+    9:  { sp: 'ACT I CLIMAX • FIRST FRACTURE', txt: 'A hidden voice echoes through Stormy Cliffs: "Five seals remain. Voranth is awakening."' },
+    14: { sp: 'ACT II • KALIKA’S OBSESSION', txt: 'In the Dark Swamp, Kalika secretly studies forbidden soul magic from the Age of Gods...' },
+    19: { sp: 'ACT II CLIMAX • BURIED TRUTH', txt: 'Alika’s archive reveals the truth: six scientists built NEXUS, and Voranth was the first human mind trapped inside.' },
+    25: { sp: 'ACT III • VAYRUKA UNLEASHED', txt: 'Clockwork Factory! Board the 18.5m combat mech VAYRUKA (tap MECH / F) to face the Ashen Behemoth Agnivraka!' },
+    29: { sp: 'ACT III • DOOM ORCHESTRA', txt: 'Raganada’s cursed symphony echoes across Eclipse Temple. Silence the Conductor to unlock the fourth seal!' },
+    30: { sp: 'ACT III • ABYSSAL SOVEREIGN', txt: 'Deep beneath the ocean, Nidra awakens—corrupted by Voranth’s Eternal Stillness.' },
+    32: { sp: 'ACT IV • KALIKA’S BETRAYAL', txt: 'Kalika reveals her alliance with Voranth and steals an Ancient God Seal! Defeat her to decide her fate.' },
+    37: { sp: 'ACT IV • DEMON CASTLE', txt: 'Rakta Kaal Fortress! Rakshor the Blood King guards the Demon Core and the truth of Aarani’s homeland.' },
+    40: { sp: 'ACT IV • BONE CATHEDRAL', txt: 'Vysaka, The Undying, blocks the Hollow Dimension. Shatter his Ritual Chain to break his endless resurrection!' },
+    49: { sp: 'ACT V • THE FINAL REALM', txt: 'Nabh Shunya Citadel! Voranth awaits in three phases: The Fallen Human, Awakened Nexus, and The Infinite Null.' }
+  };
+
+  const STORY_CHAPTERS = [
+    { act: 'ACT I (Maps 01–10)', title: 'The First Fracture', map: 0, desc: 'Enter NEXUS, defeat Lavaforged Beast (Map 05), and uncover the World-Collapse warning.' },
+    { act: 'ACT II (Maps 11–20)', title: 'The Buried Civilization', map: 14, desc: 'Discover the Six Founders (Age of Gods) and Voranth’s first integration.' },
+    { act: 'ACT III (Maps 21–30)', title: 'The Seven Colossi', map: 25, desc: 'Activate VAYRUKA mech (Map 26) and purify Colossi like Nidra, Vijra & Raganada.' },
+    { act: 'ACT IV (Maps 31–40)', title: 'The Fall of the Gods', map: 32, desc: 'Confront Kalika’s betrayal, storm Demon Castle (Map 38), and face Vysaka.' },
+    { act: 'ACT V (Maps 41–50)', title: 'The Last Reality', map: 49, desc: 'Storm Nabh Shunya Citadel (Map 50) and defeat Voranth across 3 phases.' }
+  ];
+
+  // ==================== CANVAS & STATE ====================
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const homeCanvas = document.getElementById('home-hero-canvas');
+  const hctx = homeCanvas.getContext('2d');
+  const miniCanvas = document.getElementById('minimap');
+  const mctx = miniCanvas.getContext('2d');
+  let W = 0, H = 0, DPR = 1;
+
+  function resize() {
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    const isPortrait = window.innerHeight > window.innerWidth;
+    W = isPortrait ? window.innerHeight : window.innerWidth;
+    H = isPortrait ? window.innerWidth : window.innerHeight;
+    canvas.width = Math.floor(W * DPR);
+    canvas.height = Math.floor(H * DPR);
+    ctx.imageSmoothingEnabled = true;
+  }
+  window.addEventListener('resize', resize);
+
+  const keys = { left: false, right: false, jump: false, dash: false, attack: false, heavy: false, skill: false, mech: false };
+  const justPressed = {};
+  const aiBrain = {
+    lastAction: null, spamCount: 0, jumpCount: 0, dashCount: 0,
+    record(act) {
+      if (act === this.lastAction) this.spamCount++;
+      else { this.lastAction = act; this.spamCount = 1; }
+      if (act === 'jump') this.jumpCount = Math.min(10, this.jumpCount + 1);
+      if (act === 'dash') this.dashCount = Math.min(10, this.dashCount + 1);
+    },
+    decay(dt) {
+      if (Math.random() < dt * 0.5) {
+        this.jumpCount = Math.max(0, this.jumpCount - 1);
+        this.dashCount = Math.max(0, this.dashCount - 1);
+      }
+    }
+  };
+  function setInput(k, val) {
+    if (val && !keys[k]) justPressed[k] = true;
+    keys[k] = val;
+  }
+
+  const world = {
+    stageIdx: 0, width: 2500, groundY: 520,
+    transState: 'IDLE', transAlpha: 0, nextStageIdx: 0,
+    paused: true, shake: 0, hitStop: 0,
+    camX: 0, camY: 0, camZoom: 1.15, targetZoom: 1.15,
+    platforms: [], ambient: []
+  };
+
+  const mech = {
+    active: false, x: 420, y: 0, hp: 850, maxHp: 850, energy: 100, maxEnergy: 100,
+    facing: 1, vx: 0, vy: 0, onGround: true, atkTimer: 0, stateTimer: 0
+  };
+
+  const player = {
+    x: 160, y: 0, vx: 0, vy: 0, w: 34, h: 64,
+    facing: 1, onGround: false, jumpsLeft: 2,
+    hp: 328, maxHp: 328, mp: 120, maxMp: 120,
+    mode: 'ON_FOOT', dashTimer: 0, dashCd: 0,
+    atkTimer: 0, comboStep: 0, invuln: 0, afterimages: []
+  };
+
+  let enemies = [], projectiles = [], particles = [], floatingTexts = [], slashArcs = [], relics = [], spikes = [], pendulums = [], runeSwitch = null;
+  let stageWave = 1, stageMaxWaves = 3, stageZone = 1, stageMaxZones = 5, stageRelicsFound = 0, totalRelics = 0;
+  const rpg = { level: 1, exp: 0, expNext: 120, gold: 500, weaponLv: 1, armorLv: 1, zonesCleared: 0, questsDone: new Set() };
+  try {
+    const saved = JSON.parse(localStorage.getItem('nexus_rpg_v1') || 'null');
+    if (saved) {
+      rpg.level = saved.level || 1; rpg.exp = saved.exp || 0; rpg.expNext = saved.expNext || 120;
+      rpg.gold = saved.gold || 500; rpg.weaponLv = saved.weaponLv || 1; rpg.armorLv = saved.armorLv || 1;
+      rpg.zonesCleared = saved.zonesCleared || 0;
+      if (Array.isArray(saved.questsDone)) saved.questsDone.forEach(q => rpg.questsDone.add(q));
+    }
+  } catch (_) {}
+  function saveRpg() {
+    try {
+      localStorage.setItem('nexus_rpg_v1', JSON.stringify({ ...rpg, questsDone: [...rpg.questsDone] }));
+    } catch (_) {}
+  }
+  function gainRewards(expAmt, goldAmt) {
+    rpg.exp += expAmt; rpg.gold += goldAmt;
+    while (rpg.exp >= rpg.expNext && rpg.level < 100) {
+      rpg.exp -= rpg.expNext;
+      rpg.level++;
+      rpg.expNext = Math.round(rpg.expNext * 1.18);
+      player.maxHp += 18; player.hp = player.maxHp;
+      player.maxMp += 8; player.mp = player.maxMp;
+      showBanner(`LEVEL UP! LV.${rpg.level}`, '+18 MAX HP • +8 MAX MP • +ATK');
+    }
+    saveRpg();
+    const gEl = document.getElementById('home-gold');
+    if (gEl) gEl.textContent = `🪙 ${rpg.gold.toLocaleString()}`;
+  }
+  let boss = null, portal = null, dialogueCallback = null;
+
+  // ==================== UI REFS ====================
+  const elHudPanel = document.getElementById('player-hud');
+  const elCharName = document.getElementById('hud-char-name');
+  const elCharBadge = document.getElementById('hud-char-badge');
+  const elBarHp = document.getElementById('bar-hp');
+  const elValHp = document.getElementById('val-hp');
+  const elBarMp = document.getElementById('bar-mp');
+  const elValMp = document.getElementById('val-mp');
+  const elLblHp = document.getElementById('lbl-hp');
+  const elLblMp = document.getElementById('lbl-mp');
+  const elStageTitle = document.getElementById('hud-stage');
+  const elQuest = document.getElementById('hud-quest');
+  const elBossHud = document.getElementById('boss-hud');
+  const elBossName = document.getElementById('boss-name');
+  const elBossPhase = document.getElementById('boss-phase');
+  const elBossHp = document.getElementById('boss-hp');
+  const elBossStagger = document.getElementById('boss-stagger');
+  const elBtnMech = document.getElementById('btn-mech');
+  const elSysBanner = document.getElementById('sys-banner');
+  const elSysTitle = document.getElementById('sys-title');
+  const elSysSub = document.getElementById('sys-sub');
+  const elDlgBox = document.getElementById('dialogue-box');
+  const elDlgSpeaker = document.getElementById('dlg-speaker');
+  const elDlgText = document.getElementById('dlg-text');
+  const elDlgActions = document.getElementById('dlg-actions');
+  const elSplash = document.getElementById('splash-overlay');
+  const elHome = document.getElementById('home-overlay');
+  const elSubModal = document.getElementById('sub-modal');
+  const elModalTitle = document.getElementById('modal-title');
+  const elModalBody = document.getElementById('modal-body');
+  const elEndingOverlay = document.getElementById('ending-overlay');
+  const elCutscene = document.getElementById('cutscene-overlay');
+  const csCanvas = document.getElementById('cs-canvas');
+  const csCtx = csCanvas.getContext('2d');
+  let activeCutscene = null, csIndex = 0, csOnDone = null;
+
+  function renderCutsceneFrame(scene) {
+    const w = csCanvas.width, h = csCanvas.height;
+    const g = csCtx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, '#02040a'); g.addColorStop(1, scene.bg);
+    csCtx.fillStyle = g; csCtx.fillRect(0, 0, w, h);
+    // Atmospheric rays & ground
+    csCtx.fillStyle = 'rgba(255,255,255,0.04)';
+    for (let i = 0; i < 6; i++) csCtx.fillRect(i * 150, 0, 35, h);
+    csCtx.fillStyle = '#0f172a'; csCtx.fillRect(0, h - 46, w, 46);
+    csCtx.fillStyle = scene.fg; csCtx.fillRect(0, h - 48, w, 3);
+
+    if (scene.mode === 'hero' || scene.mode === 'glitch') {
+      drawHeroSprite(csCtx, w * 0.35, h - 98, 2.2, 1, CHARACTERS[selectedCharIdx], false, true, false);
+    } else if (scene.mode === 'mech') {
+      csCtx.fillStyle = '#334155'; csCtx.fillRect(w * 0.42, h - 220, 110, 140);
+      csCtx.fillStyle = '#22d3ee'; csCtx.beginPath(); csCtx.arc(w * 0.49, h - 165, 22, 0, Math.PI * 2); csCtx.fill();
+    } else if (scene.mode === 'founders') {
+      for (let f = 0; f < 6; f++) {
+        csCtx.fillStyle = 'rgba(96, 165, 250, 0.72)';
+        csCtx.beginPath(); csCtx.roundRect(140 + f * 92, h - 180, 38, 120, 10); csCtx.fill();
+      }
+    } else if (scene.mode === 'voranth') {
+      csCtx.fillStyle = '#1e1b4b'; csCtx.fillRect(w * 0.56, h - 210, 88, 155);
+      csCtx.fillStyle = '#f43f5e'; csCtx.fillRect(w * 0.60, h - 195, 38, 10);
+      drawHeroSprite(csCtx, w * 0.28, h - 98, 2.0, 1, CHARACTERS[selectedCharIdx], false, false, false);
+    } else {
+      csCtx.fillStyle = scene.fg; csCtx.beginPath(); csCtx.roundRect(w * 0.52, h - 215, 130, 160, 18); csCtx.fill();
+      drawHeroSprite(csCtx, w * 0.28, h - 98, 2.0, 1, CHARACTERS[selectedCharIdx], false, true, false);
+    }
+  }
+
+  function playCutscene(csData, onDone) {
+    world.paused = true;
+    activeCutscene = csData; csIndex = 0; csOnDone = onDone || null;
+    document.getElementById('cs-act').textContent = csData.act;
+    const showStep = () => {
+      const sc = activeCutscene.scenes[csIndex];
+      document.getElementById('cs-speaker').textContent = sc.sp;
+      document.getElementById('cs-line').textContent = sc.txt;
+      renderCutsceneFrame(sc);
+    };
+    showStep();
+    elCutscene.classList.remove('hidden');
+    document.getElementById('cs-next').onclick = () => {
+      csIndex++;
+      if (csIndex >= activeCutscene.scenes.length) {
+        elCutscene.classList.add('hidden'); world.paused = false;
+        if (csOnDone) csOnDone();
+      } else showStep();
+    };
+    document.getElementById('cs-skip').onclick = () => {
+      elCutscene.classList.add('hidden'); world.paused = false;
+      if (csOnDone) csOnDone();
+    };
+  }
+
+  function showBanner(title, sub) {
+    elSysTitle.textContent = title;
+    elSysSub.textContent = sub;
+    elSysBanner.classList.add('show');
+    setTimeout(() => elSysBanner.classList.remove('show'), 2100);
+  }
+
+  function showDialogue(speaker, text, choices = null, onDone = null) {
+    world.paused = true;
+    elDlgSpeaker.textContent = speaker;
+    elDlgText.textContent = text;
+    elDlgActions.innerHTML = '';
+    dialogueCallback = onDone;
+    if (choices && choices.length) {
+      choices.forEach(c => {
+        const b = document.createElement('button');
+        b.className = 'dlg-btn' + (c.alt ? ' alt' : '');
+        b.textContent = c.label;
+        b.onclick = () => { elDlgBox.style.display = 'none'; world.paused = false; if (c.onSelect) c.onSelect(); };
+        elDlgActions.appendChild(b);
+      });
+    } else {
+      const b = document.createElement('button');
+      b.className = 'dlg-btn'; b.textContent = 'Continue';
+      b.onclick = () => { elDlgBox.style.display = 'none'; world.paused = false; if (dialogueCallback) dialogueCallback(); };
+      elDlgActions.appendChild(b);
+    }
+    elDlgBox.style.display = 'block';
+  }
+
+  // ==================== STAGE LOADING ====================
+  function spawnWave(idx, waveNum) {
+    const roster = [
+      { name: 'Gobhu', hp: 75, color: '#4d7c0f', speed: 105, dmg: 14, kind: 'goblin' },
+      { name: 'Rakta', hp: 90, color: '#4d7c0f', speed: 125, dmg: 17, kind: 'redcap' },
+      { name: 'Dhanasukar', hp: 115, color: '#78350f', speed: 145, dmg: 22, kind: 'boar' },
+      { name: 'Visapaksa', hp: 88, color: '#6b21a8', speed: 138, dmg: 16, kind: 'bird' },
+      { name: 'Karpada', hp: 100, color: '#15803d', speed: 95, dmg: 17, kind: 'frog' },
+      { name: 'Kalisvana', hp: 120, color: '#f97316', speed: 150, dmg: 21, kind: 'wolf' },
+      { name: 'Rekhakavacha', hp: 135, color: '#38bdf8', speed: 100, dmg: 22, kind: 'demon' }
+    ];
+    const count = 5 + waveNum + (idx >= 20 ? 1 : 0);
+    for (let i = 0; i < count; i++) {
+      const t = roster[(i + idx + waveNum) % roster.length];
+      const isElite = (waveNum === 3 && i === count - 1);
+      const eHp = Math.round((t.hp + idx * 6) * 1.35 * (isElite ? 1.8 : 1));
+      enemies.push({
+        x: 500 + i * 215, y: t.kind === 'bird' ? world.groundY - 135 : world.groundY - 52,
+        w: isElite ? 54 : 42, h: isElite ? 66 : 52, vx: 0, vy: 0, facing: -1,
+        name: isElite ? 'ELITE ' + t.name : t.name, kind: isElite ? 'demon' : t.kind,
+        hp: eHp, maxHp: eHp,
+        color: isElite ? '#f43f5e' : t.color,
+        speed: Math.round(t.speed * (isElite ? 1.3 : 1.2)),
+        dmg: Math.round(t.dmg * (isElite ? 1.55 : 1.3)),
+        atkCd: 0.6 + Math.random() * 0.4, shotCd: 1.6 + Math.random(), hitFlash: 0
+      });
+    }
+    elQuest.textContent = `${STAGES[idx].quest} • WAVE ${waveNum}/${stageMaxWaves}`;
+  }
+
+  function loadStage(idx) {
+    world.stageIdx = idx;
+    const st = STAGES[idx];
+    world.groundY = 520;
+    world.width = st.boss ? 2100 : 2400;
+    enemies = []; projectiles = []; particles = []; floatingTexts = [];
+    boss = null; portal = null;
+
+    const ch = CHARACTERS[selectedCharIdx];
+    player.maxHp = ch.hp + (rpg.level - 1) * 18 + (rpg.armorLv - 1) * 25;
+    player.maxMp = ch.mp + (rpg.level - 1) * 8;
+    player.x = 160; player.y = world.groundY - player.h;
+    player.vx = 0; player.vy = 0;
+    player.hp = player.maxHp; player.mp = player.maxMp;
+    player.mode = 'ON_FOOT'; player.atkTimer = 0; player.invuln = 0;
+
+    world.platforms = [
+      { x: 340, y: world.groundY - 115, w: 180, h: 16 },
+      { x: 640, y: world.groundY - 190, w: 200, h: 16 },
+      { x: 1020, y: world.groundY - 125, w: 210, h: 16 },
+      { x: 1420, y: world.groundY - 175, w: 190, h: 16 }
+    ];
+
+    mech.active = st.hasMech;
+    mech.x = 420; mech.y = world.groundY - 148;
+    mech.hp = mech.maxHp; mech.energy = mech.maxEnergy; mech.facing = 1;
+
+    relics = [
+      { x: 420, y: world.groundY - 150, collected: false, locked: false },
+      { x: 1120, y: world.groundY - 165, collected: false, locked: false },
+      { x: 1510, y: world.groundY - 215, collected: false, locked: !st.boss }
+    ];
+    spikes = st.boss ? [] : [
+      { x: 560, w: 68, phase: 0 },
+      { x: 930, w: 74, phase: 1.5 },
+      { x: 1320, w: 74, phase: 3.0 }
+    ];
+    pendulums = st.boss ? [] : [
+      { x: 740, y: world.groundY - 290, len: 155, speed: 2.3, phase: 0 },
+      { x: 1470, y: world.groundY - 300, len: 165, speed: 2.6, phase: 1.2 }
+    ];
+    runeSwitch = st.boss ? null : { x: 860, y: world.groundY - 34, activated: false };
+    stageRelicsFound = 0;
+    document.getElementById('qt-side').textContent = `Collect Relics (0/3) • Total ${totalRelics}`;
+
+    if (!st.boss) {
+      stageZone = 1; stageMaxZones = 5; stageWave = 1; stageMaxWaves = 3;
+      spawnWave(idx, 1);
+      portal = { x: world.width - 170, y: world.groundY - 110, r: 46, active: false };
+    } else {
+      const b = st.boss;
+      boss = {
+        name: b.name, type: b.type,
+        x: 1320, y: world.groundY - 110 * b.size,
+        w: 76 * b.size, h: 110 * b.size,
+        vx: 0, vy: 0, facing: -1,
+        hp: Math.round(b.hp * 1.4), maxHp: Math.round(b.hp * 1.4), stagger: 0, maxStagger: 120, staggered: 0,
+        phase: 1, color: b.color, aiTimer: 1.2, aiState: 'IDLE', telegraph: 0, hitFlash: 0
+      };
+      elBossName.textContent = boss.name;
+      elBossHud.style.display = 'block';
+    }
+    if (!boss) elBossHud.style.display = 'none';
+
+    world.ambient = [];
+    for (let i = 0; i < 45; i++) {
+      world.ambient.push({ x: Math.random() * world.width, y: Math.random() * world.groundY, s: 1.5 + Math.random() * 3, sp: 25 + Math.random() * 60 });
+    }
+
+    elStageTitle.textContent = `${st.code} • ${st.name.toUpperCase()}`;
+    elQuest.textContent = st.quest;
+    document.getElementById('qt-main').textContent = `${st.name}: ${st.quest}`;
+    updateHud();
+    showBanner(`${st.code} • ${st.name.toUpperCase()}`, `${st.act} • ${st.quest}`);
+    if (CUTSCENES[idx]) {
+      playCutscene(CUTSCENES[idx]);
+    } else if (STORY_INTRO[idx]) {
+      showDialogue(STORY_INTRO[idx].sp, STORY_INTRO[idx].txt);
+    }
+  }
+
+  function transitionToStage(idx) {
+    if (world.transState !== 'IDLE') return;
+    world.transState = 'FADE_OUT';
+    world.nextStageIdx = idx % STAGES.length;
+  }
+
+  // ==================== COMBAT & FX ====================
+  function spawnParticles(x, y, color, count = 12, speed = 220) {
+    for (let i = 0; i < count; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const sp = (0.3 + Math.random() * 0.7) * speed;
+      particles.push({ x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, life: 0.28 + Math.random() * 0.25, maxLife: 0.5, color, size: 2.5 + Math.random() * 3.5 });
+    }
+  }
+  function addFloatText(x, y, txt, color = '#fbbf24') { floatingTexts.push({ x, y, txt, color, life: 0.85 }); }
+  function rectsOverlap(a, b) { return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y; }
+
+  function performAttack(type) {
+    if (player.mode === 'MECH_COMBAT') {
+      if (mech.atkTimer > 0) return;
+      aiBrain.record(type);
+    if (type === 'skill') {
+        if (mech.energy < 25) return;
+        mech.energy -= 25; mech.atkTimer = 0.35; AudioSys.plasma(); world.shake = 6;
+        projectiles.push({ fromPlayer: true, x: mech.x + (mech.facing > 0 ? 110 : -20), y: mech.y + 58, vx: mech.facing * 780, vy: 0, r: 14, dmg: 85, stagger: 22, color: '#22d3ee', life: 1.5 });
+        return;
+      }
+      mech.atkTimer = type === 'heavy' ? 0.44 : 0.25;
+      if (type === 'heavy') AudioSys.heavy(); else AudioSys.slash();
+      const reach = type === 'heavy' ? 170 : 135;
+      const dmg = type === 'heavy' ? 95 : 58;
+      hitTargets({ x: mech.facing > 0 ? mech.x + 60 : mech.x + 40 - reach, y: mech.y + 15, w: reach, h: 120 }, dmg, type === 'heavy' ? 28 : 14, '#22d3ee');
+      return;
+    }
+
+    if (player.atkTimer > 0) return;
+    const ch = CHARACTERS[selectedCharIdx];
+    const baseAtk = ch.atk + (rpg.level - 1) * 2 + (rpg.weaponLv - 1) * 6;
+    const px = player.x + player.w / 2 + player.facing * 20;
+    const py = player.y + 26;
+    aiBrain.record(type);
+
+    // ---- SKILL (R / Q) ----
+    if (type === 'skill') {
+      const alliance = CHARACTERS.filter((c, i) => i !== selectedCharIdx && c.id !== 'kalika' && storyState.unlockedMaxMap >= c.unlockMap);
+      if (alliance.length > 0 && player.mp >= 20) {
+        const ally = alliance[Math.floor(Math.random() * alliance.length)];
+        addFloatText(player.x + 16, player.y - 18, `ALLIANCE: ${ally.name}!`, ally.energy);
+        projectiles.push({ fromPlayer: true, shape: ally.type === 'bow' ? 'arrow' : 'spell', x: px, y: py - 14, vx: player.facing * 690, vy: 0, r: 11, dmg: Math.round(baseAtk * 0.85), stagger: 10, color: ally.energy, life: 1.1 });
+      }
+      if (player.mp < 20) return;
+      player.mp -= 20; player.atkTimer = 0.34; AudioSys.plasma(); world.shake = 5;
+      if (ch.type === 'bow') {
+        for (let k = -2; k <= 2; k++) {
+          projectiles.push({ fromPlayer: true, shape: 'arrow', x: px, y: py, vx: player.facing * 760, vy: k * 65, r: 10, dmg: Math.round(baseAtk * 0.9), stagger: 8, color: ch.energy, life: 1.2 });
+        }
+      } else if (ch.type === 'chakra') {
+        for (let k = -1; k <= 1; k++) {
+          projectiles.push({ fromPlayer: true, shape: 'chakra', x: px, y: py + k * 14, vx: player.facing * 560, vy: k * 50, r: 18, dmg: Math.round(baseAtk * 1.4), stagger: 14, color: ch.accent, life: 1.3 });
+        }
+      } else if (ch.type === 'staff') {
+        for (let k = 0; k < 3; k++) {
+          projectiles.push({ fromPlayer: true, shape: 'spell', x: px + k * player.facing * 28, y: py - 10 + k * 10, vx: player.facing * 520, vy: 0, r: 15, dmg: Math.round(baseAtk * 1.45), stagger: 14, color: ch.energy, life: 1.4 });
+        }
+      } else if (ch.type === 'sword') {
+        projectiles.push({ fromPlayer: true, shape: 'wave', x: px, y: py, vx: player.facing * 640, vy: 0, r: 24, dmg: Math.round(baseAtk * 2.2), stagger: 26, color: ch.energy, life: 1.1 });
+      } else {
+        // Dual blades: Twin crossing energy blades
+        projectiles.push({ fromPlayer: true, shape: 'wave', x: px, y: py - 6, vx: player.facing * 680, vy: 0, r: 16, dmg: Math.round(baseAtk * 1.35), stagger: 14, color: ch.energy, life: 1.0 });
+        projectiles.push({ fromPlayer: true, shape: 'wave', x: px, y: py + 8, vx: player.facing * 640, vy: 0, r: 16, dmg: Math.round(baseAtk * 1.35), stagger: 14, color: ch.accent, life: 1.0 });
+      }
+      return;
+    }
+
+    // ---- BOW (PENSHAN): Ranged Arrows ----
+    if (ch.type === 'bow') {
+      player.atkTimer = type === 'heavy' ? 0.36 : 0.22;
+      AudioSys.slash();
+      if (type === 'heavy') {
+        for (let k = -1; k <= 1; k++) {
+          projectiles.push({ fromPlayer: true, shape: 'arrow', x: px, y: py, vx: player.facing * 740, vy: k * 85, r: 9, dmg: Math.round(baseAtk * 0.95), stagger: 9, color: ch.energy, life: 1.2 });
+        }
+      } else {
+        projectiles.push({ fromPlayer: true, shape: 'arrow', x: px, y: py, vx: player.facing * 800, vy: 0, r: 9, dmg: Math.round(baseAtk * 1.05), stagger: 7, color: ch.accent, life: 1.2 });
+      }
+      return;
+    }
+
+    // ---- CHAKRA (AAROHINI): Spinning Lotus & AoE Blast ----
+    if (ch.type === 'chakra') {
+      player.atkTimer = type === 'heavy' ? 0.38 : 0.24;
+      AudioSys.plasma();
+      if (type === 'heavy') {
+        const bx = player.x + player.w / 2 + player.facing * 75;
+        spawnParticles(bx, py + 10, '#f472b6', 22, 260);
+        hitTargets({ x: bx - 55, y: player.y - 10, w: 110, h: 85 }, Math.round(baseAtk * 1.8), 20, '#f472b6');
+      } else {
+        projectiles.push({ fromPlayer: true, shape: 'chakra', x: px, y: py, vx: player.facing * 540, vy: 0, r: 15, dmg: Math.round(baseAtk * 1.05), stagger: 10, color: ch.accent, life: 1.1 });
+      }
+      return;
+    }
+
+    // ---- STAFF (KALIKA): Spell Cast & Hands of Tartarus ----
+    if (ch.type === 'staff') {
+      player.atkTimer = type === 'heavy' ? 0.40 : 0.25;
+      AudioSys.plasma();
+      if (type === 'heavy') {
+        const cx = player.x + player.w / 2 + player.facing * 85;
+        spawnParticles(cx, world.groundY - 24, '#c084fc', 20, 220);
+        projectiles.push({ fromPlayer: true, shape: 'claw', x: cx, y: world.groundY - 30, vx: 0, vy: -90, r: 22, dmg: Math.round(baseAtk * 1.9), stagger: 22, color: '#a855f7', life: 0.45 });
+        hitTargets({ x: cx - 45, y: world.groundY - 75, w: 90, h: 75 }, Math.round(baseAtk * 1.6), 20, '#c084fc');
+      } else {
+        projectiles.push({ fromPlayer: true, shape: 'spell', x: px, y: py, vx: player.facing * 560, vy: 0, r: 12, dmg: Math.round(baseAtk * 1.1), stagger: 9, color: ch.energy, life: 1.2 });
+      }
+      return;
+    }
+
+    // ---- SWORD & DUAL BLADES: Martial Arts Melee Combos ----
+    player.atkTimer = type === 'heavy' ? 0.32 : 0.18;
+    player.comboStep = (player.comboStep + 1) % 3;
+    const isSword = ch.type === 'sword';
+    player.vx = player.facing * (type === 'heavy' ? 280 : (player.comboStep === 2 ? 240 : 140));
+    if (type === 'heavy') AudioSys.heavy(); else AudioSys.slash();
+    const reach = (type === 'heavy' ? 108 : (player.comboStep === 2 ? 96 : 78)) + (isSword ? 20 : 0);
+    const dmg = type === 'heavy' ? Math.round(baseAtk * 1.9) : (player.comboStep === 2 ? Math.round(baseAtk * 1.35) : baseAtk);
+    const arcCol = player.comboStep === 1 ? ch.accent : ch.energy;
+    slashArcs.push({
+      x: player.x + player.w / 2 + player.facing * 20,
+      y: player.y + player.h * 0.44,
+      facing: player.facing,
+      r: (type === 'heavy' ? 54 : (player.comboStep === 2 ? 48 : 38)) + (isSword ? 10 : 0),
+      step: player.comboStep,
+      color: arcCol,
+      life: 0.18, maxLife: 0.18
+    });
+    hitTargets({ x: player.facing > 0 ? player.x + player.w - 6 : player.x + 6 - reach, y: player.y - 4, w: reach, h: player.h + 8 }, dmg, type === 'heavy' ? 22 : 11, arcCol);
+  }
+
+  function hitTargets(box, dmg, stag, color) {
+    enemies.forEach(e => {
+      if (rectsOverlap(box, e)) {
+        e.hp -= dmg; e.hitFlash = 0.14;
+        e.vx = (player.mode === 'MECH_COMBAT' ? mech.facing : player.facing) * 190;
+        AudioSys.hit(); world.shake = Math.max(world.shake, 5); world.hitStop = 0.035;
+        spawnParticles(e.x + e.w / 2, e.y + e.h / 2, color, 10);
+        addFloatText(e.x + e.w / 2, e.y, `-${dmg}`, color);
+      }
+    });
+    if (boss && boss.hp > 0 && rectsOverlap(box, boss)) {
+      const finalDmg = Math.round(dmg * (boss.staggered > 0 ? 1.5 : 1));
+      boss.hp = Math.max(0, boss.hp - finalDmg);
+      boss.hitFlash = 0.12;
+      if (boss.staggered <= 0) {
+        boss.stagger = Math.min(boss.maxStagger, boss.stagger + stag);
+        if (boss.stagger >= boss.maxStagger) {
+          boss.staggered = 3.2; boss.stagger = 0;
+          addFloatText(boss.x + boss.w / 2, boss.y - 20, 'STAGGERED!', '#facc15');
+        }
+      }
+      AudioSys.hit(); world.shake = Math.max(world.shake, 7); world.hitStop = 0.045;
+      spawnParticles(boss.x + boss.w / 2, boss.y + boss.h * 0.45, color, 14);
+      addFloatText(boss.x + boss.w / 2, boss.y + 10, `-${finalDmg}`, boss.staggered > 0 ? '#facc15' : color);
+      checkBossTransitions();
+    }
+  }
+
+  function damagePlayer(dmg) {
+    if (player.invuln > 0 || player.mode === 'ENTERING_MECH' || player.mode === 'EXITING_MECH') return;
+    if (player.mode === 'MECH_COMBAT') {
+      mech.hp = Math.max(0, mech.hp - dmg); player.invuln = 0.45; world.shake = 8; AudioSys.hit();
+      addFloatText(mech.x + 50, mech.y, `-${dmg}`, '#fb7185');
+      if (mech.hp <= 0) { showBanner('REACTOR CRITICAL', 'EMERGENCY EJECTION'); toggleMech(); }
+    } else {
+      player.hp = Math.max(0, player.hp - dmg); player.invuln = 0.65; world.shake = 7; AudioSys.hit();
+      addFloatText(player.x + 16, player.y, `-${dmg}`, '#ef4444');
+      if (player.hp <= 0) {
+        showDialogue('SYSTEM', `${CHARACTERS[selectedCharIdx].name} fell in battle. Restoring region...`, [
+          { label: 'Retry Region', onSelect: () => loadStage(world.stageIdx) }
+        ]);
+      }
+    }
+  }
+
+  function toggleMech() {
+    if (!mech.active) return;
+    if (player.mode === 'ON_FOOT') {
+      if (Math.abs((player.x + player.w / 2) - (mech.x + 50)) > 150) return;
+      player.mode = 'ENTERING_MECH'; mech.stateTimer = 0.75; AudioSys.mechOn();
+      showBanner('MECH SYSTEMS ONLINE', 'VAYRUKA REACTOR ENGAGED'); world.targetZoom = 0.78;
+    } else if (player.mode === 'MECH_COMBAT') {
+      player.mode = 'EXITING_MECH'; mech.stateTimer = 0.55;
+      player.x = mech.x + 35; player.y = mech.y + 60; player.vy = -260; world.targetZoom = 1.15;
+    }
+  }
+
+  function checkBossTransitions() {
+    if (!boss) return;
+    const pct = boss.hp / boss.maxHp;
+    if (boss.type === 'voranth') {
+      if (boss.phase === 1 && pct <= 0.66) { boss.phase = 2; boss.color = '#9333ea'; AudioSys.roar(); showBanner('PHASE II', 'VORANTH: THE REALM DEVOURER'); }
+      else if (boss.phase === 2 && pct <= 0.33) { boss.phase = 3; boss.color = '#f43f5e'; AudioSys.roar(); showBanner('PHASE III', 'VORANTH: THE INFINITE NULL'); }
+    } else if (boss.phase === 1 && pct <= 0.5) {
+      boss.phase = 2; AudioSys.roar(); showBanner('BOSS ENRAGED', `${boss.name} PHASE 2`);
+    }
+    if (boss.hp <= 0) {
+      unlockNextMap(world.stageIdx);
+      spawnParticles(boss.x + boss.w / 2, boss.y + boss.h / 2, '#fbbf24', 40, 340); AudioSys.roar();
+      if (world.stageIdx === 4) {
+        showDialogue('LAVAFORGED BEAST', '"The world is ending... The one who created your suffering is waiting beyond the final realm... VORANTH." [WORLD-COLLAPSE EVENT UNLOCKED]', [
+          { label: 'Continue Story (Map 06)', onSelect: () => transitionToStage(5) }
+        ]);
+      } else if (world.stageIdx === 30) {
+        showDialogue('NIDRA PURIFIED', 'The Corruption Core shatters. Nidra returns to its role as Guardian of the Ocean’s Memory and grants the Abyssal Seal!', [
+          { label: 'Proceed to Act IV', onSelect: () => transitionToStage(31) }
+        ]);
+      } else if (world.stageIdx === 25) {
+        showDialogue('AGNIVRAKA PURIFIED', 'Agnivraka bows its ashen mane before VAYRUKA: "The world’s core is steady. Call on me when true peril arrives." [COLOSSUS PURIFIED]', [
+          { label: 'Continue to Map 27', onSelect: () => transitionToStage(26) }
+        ]);
+      } else if (world.stageIdx === 28 || world.stageIdx === 44) {
+        showDialogue('VIJRA — THE SKY KEYSTONE', '"You have proven humanity can coexist with the sky." Vijra entrusts Aruvex with the Sky Keystone!', [
+          { label: 'Continue Journey', onSelect: () => transitionToStage(world.stageIdx + 1) }
+        ]);
+      } else if (world.stageIdx === 29) {
+        showDialogue('RAGANADA SILENCED', 'The Conductor’s final note shatters. The Doom Orchestra dissolves, freeing the region from its eternal song.', [
+          { label: 'Proceed to Deep Ocean (Map 31)', onSelect: () => transitionToStage(30) }
+        ]);
+      } else if (world.stageIdx === 31) {
+        showDialogue('SHOONYAPALA — THE LAST WORDS', '"...The cycle must continue... Do not let Voranth... freeze it... Let life, death, and change exist together..."', [
+          { label: 'Release the Souls (Map 33)', onSelect: () => transitionToStage(32) }
+        ]);
+      } else if (world.stageIdx === 40 || world.stageIdx === 47) {
+        showDialogue('VYSAKA — FINAL DISSOLUTION', 'Aruvex shatters Vysaka’s Ritual Chain! The Undying crumbles to ash, leaving behind the Ashen Crown.', [
+          { label: 'Advance Toward Final Dimension', onSelect: () => transitionToStage(world.stageIdx + 1) }
+        ]);
+      } else if (world.stageIdx === 32) {
+        showDialogue('KALIKA — THE FATE CHOICE', 'Kalika falls to her knees: "I only wanted eternity... Voranth used me as a key!" Choose Kalika’s fate:', [
+          { label: 'Secret Alliance (Join vs Voranth)', onSelect: () => { storyState.kalikaAlliance = true; transitionToStage(33); } },
+          { label: 'Redemption Sacrifice', alt: true, onSelect: () => transitionToStage(33) },
+          { label: 'Leave as Eternal Enemy', alt: true, onSelect: () => transitionToStage(33) }
+        ]);
+      } else if (world.stageIdx === 49) {
+        showDialogue('VORANTH', '"I waited so long... I forgot what it felt like to live. What happens to this world now?"', [
+          { label: 'Restore Core (True Ending)', onSelect: () => showEnding('TRUE ENDING • 1 OF 10', 'A NEW BEGINNING', 'Aruvex separates Voranth from the corrupted core. All 50 regions heal, the Colossi return home, and a new horizon opens.') },
+          { label: 'Last Guardian (Bittersweet)', alt: true, onSelect: () => showEnding('BITTERSWEET • 2 OF 10', 'THE LAST GUARDIAN', 'Aruvex stays linked to NEXUS to keep the exit open for his friends.') },
+          { label: 'Absorb Power (Dark)', alt: true, onSelect: () => showEnding('DARK ENDING • 3 OF 10', 'THE REALM DEVOURER', 'NEW ADMINISTRATOR: ARUVEX. The sky freezes once more.') }
+        ]);
+      } else {
+        showDialogue('SYSTEM', `${boss.name} defeated! Portal to ${STAGES[(world.stageIdx + 1) % 50].name} is open.`, [
+          { label: 'Advance to Next Region', onSelect: () => transitionToStage(world.stageIdx + 1) }
+        ]);
+      }
+    }
+  }
+
+  function showEnding(tag, title, desc) {
+    world.paused = true;
+    document.getElementById('end-tag').textContent = tag;
+    document.getElementById('end-title').textContent = title;
+    document.getElementById('end-desc').textContent = desc;
+    elEndingOverlay.classList.remove('hidden');
+  }
+
+  // ==================== UPDATE LOOP ====================
+  function update(dt) {
+    if (world.transState === 'FADE_OUT') {
+      world.transAlpha = Math.min(1, world.transAlpha + dt * 2.0);
+      if (world.transAlpha >= 1) { loadStage(world.nextStageIdx); world.transState = 'FADE_IN'; }
+      return;
+    } else if (world.transState === 'FADE_IN') {
+      world.transAlpha = Math.max(0, world.transAlpha - dt * 1.2);
+      if (world.transAlpha <= 0) world.transState = 'IDLE';
+    }
+    if (world.paused) return;
+
+    if (world.hitStop > 0) { world.hitStop -= dt; return; }
+    aiBrain.decay(dt);
+    world.shake = Math.max(0, world.shake - dt * 24);
+    for (let i = slashArcs.length - 1; i >= 0; i--) {
+      slashArcs[i].life -= dt;
+      if (slashArcs[i].life <= 0) slashArcs.splice(i, 1);
+    }
+    player.invuln = Math.max(0, player.invuln - dt);
+    player.dashCd = Math.max(0, player.dashCd - dt);
+    player.mp = Math.min(player.maxMp, player.mp + dt * 4);
+    if (mech.active) mech.energy = Math.min(mech.maxEnergy, mech.energy + dt * 5.5);
+
+    if (player.mode === 'ENTERING_MECH') { mech.stateTimer -= dt; if (mech.stateTimer <= 0) player.mode = 'MECH_COMBAT'; }
+    else if (player.mode === 'EXITING_MECH') { mech.stateTimer -= dt; if (mech.stateTimer <= 0) player.mode = 'ON_FOOT'; }
+
+    if (justPressed.mech) { if (mech.active && (player.mode === 'MECH_COMBAT' || Math.abs((player.x + player.w / 2) - (mech.x + 50)) < 150)) toggleMech(); else performAttack('skill'); }
+    if (justPressed.attack) performAttack('light');
+    if (justPressed.heavy) performAttack('heavy');
+    if (justPressed.skill) performAttack('skill');
+
+    if (player.mode === 'MECH_COMBAT') {
+      mech.atkTimer = Math.max(0, mech.atkTimer - dt);
+      let move = 0;
+      if (keys.left) { move -= 1; mech.facing = -1; }
+      if (keys.right) { move += 1; mech.facing = 1; }
+      if (justPressed.dash && mech.energy >= 12) { mech.energy -= 12; mech.vx = mech.facing * 620; AudioSys.dash(); }
+      else mech.vx += (move * 255 - mech.vx) * Math.min(1, dt * 12);
+      if (justPressed.jump && mech.onGround) { mech.vy = -520; mech.onGround = false; AudioSys.jump(); }
+      mech.vy += 1250 * dt;
+      mech.x = Math.max(20, Math.min(world.width - 120, mech.x + mech.vx * dt));
+      mech.y += mech.vy * dt;
+      if (mech.y >= world.groundY - 148) { mech.y = world.groundY - 148; mech.vy = 0; mech.onGround = true; }
+      player.x = mech.x + 35; player.y = mech.y + 30;
+    } else if (player.mode === 'ON_FOOT') {
+      player.atkTimer = Math.max(0, player.atkTimer - dt);
+      if (player.dashTimer > 0) {
+        player.dashTimer -= dt;
+        player.afterimages.push({ x: player.x, y: player.y, facing: player.facing, life: 0.18 });
+      } else {
+        let move = 0;
+        if (keys.left) { move -= 1; player.facing = -1; }
+        if (keys.right) { move += 1; player.facing = 1; }
+        player.vx += (move * CHARACTERS[selectedCharIdx].speed - player.vx) * Math.min(1, dt * 16);
+      }
+      if (justPressed.dash && player.dashCd <= 0) {
+        aiBrain.record('dash');
+        player.dashTimer = 0.15; player.dashCd = 0.45; player.vx = player.facing * 720;
+        player.invuln = Math.max(player.invuln, 0.18); AudioSys.dash();
+      }
+      if (justPressed.jump && player.jumpsLeft > 0) {
+        aiBrain.record('jump');
+        player.vy = -560; player.onGround = false; player.jumpsLeft--; AudioSys.jump();
+      }
+      player.vy += 1450 * dt;
+      const prevY = player.y + player.h;
+      player.x = Math.max(20, Math.min(world.width - player.w - 20, player.x + player.vx * dt));
+      player.y += player.vy * dt;
+      player.onGround = false;
+      if (player.vy >= 0) {
+        for (const p of world.platforms) {
+          if (player.x + player.w > p.x && player.x < p.x + p.w && prevY <= p.y + 8 && player.y + player.h >= p.y) {
+            player.y = p.y - player.h; player.vy = 0; player.onGround = true; player.jumpsLeft = 2;
+          }
+        }
+      }
+      if (player.y + player.h >= world.groundY) {
+        player.y = world.groundY - player.h; player.vy = 0; player.onGround = true; player.jumpsLeft = 2;
+      }
+    }
+
+    const targetX = player.mode === 'MECH_COMBAT' ? mech.x + 50 : player.x + player.w / 2;
+    const targetBox = player.mode === 'MECH_COMBAT' ? { x: mech.x + 15, y: mech.y + 10, w: 76, h: 138 } : player;
+
+    const predX = targetX + player.vx * 0.28;
+    const targetY = player.mode === 'MECH_COMBAT' ? mech.y + 60 : player.y + player.h / 2;
+    for (let i = enemies.length - 1; i >= 0; i--) {
+      const e = enemies[i];
+      e.hitFlash = Math.max(0, e.hitFlash - dt); e.atkCd -= dt; e.shotCd -= dt;
+      e.evadeCd = Math.max(0, (e.evadeCd || 0) - dt);
+      const flankOffset = (i % 2 === 0 ? 1 : -1) * 46;
+      const dx = (predX + flankOffset) - (e.x + e.w / 2);
+
+      // Evasive backstep if player spams melee attacks nearby
+      if (aiBrain.spamCount >= 3 && Math.abs(targetX - (e.x + e.w / 2)) < 110 && e.evadeCd <= 0) {
+        e.evadeCd = 2.2;
+        e.vx = (targetX > e.x ? -1 : 1) * 340;
+        addFloatText(e.x + e.w / 2, e.y - 14, 'DODGE!', '#38bdf8');
+      } else if (Math.abs(dx) < 660 && Math.abs(dx) > 36) {
+        e.facing = dx > 0 ? 1 : -1;
+        e.vx += (e.facing * e.speed - e.vx) * dt * 7;
+      } else e.vx *= 0.85;
+
+      e.x = Math.max(20, Math.min(world.width - e.w - 20, e.x + e.vx * dt));
+      if (rectsOverlap(e, targetBox) && e.atkCd <= 0) { e.atkCd = 0.78; damagePlayer(e.dmg); }
+
+      // Predictive lead shot (angles upward if player is airborne / jumping often)
+      if (e.shotCd <= 0 && Math.abs(targetX - (e.x + e.w / 2)) > 120 && Math.abs(targetX - (e.x + e.w / 2)) < 520) {
+        e.shotCd = 2.1 + Math.random() * 0.7;
+        const aimDx = predX - (e.x + e.w / 2);
+        const aimDy = (targetY + player.vy * 0.16) - (e.y + 22);
+        const len = Math.hypot(aimDx, aimDy) || 1;
+        const eShape = e.kind === 'redcap' ? 'arrow' : (e.kind === 'demon' ? 'wave' : 'spell');
+        projectiles.push({ fromPlayer: false, shape: eShape, x: e.x + e.w / 2, y: e.y + 22, vx: (aimDx / len) * 350, vy: (aimDy / len) * 350, r: 9, dmg: Math.round(e.dmg * 0.85), color: e.color, life: 1.9 });
+      }
+      if (e.hp <= 0) { spawnParticles(e.x + e.w / 2, e.y + e.h / 2, e.color, 16); gainRewards(22 + world.stageIdx * 3, 35 + world.stageIdx * 5); enemies.splice(i, 1); }
+    }
+
+    // Ancient Rune Switch (Tomb Raider puzzle to unseal Relic #3)
+    if (runeSwitch && !runeSwitch.activated && rectsOverlap(targetBox, { x: runeSwitch.x - 18, y: runeSwitch.y - 18, w: 36, h: 36 })) {
+      runeSwitch.activated = true;
+      relics.forEach(r => r.locked = false);
+      AudioSys.mechOn();
+      showBanner('ANCIENT SEAL UNLOCKED', 'TOMB RELIC #3 UNSEALED!');
+      spawnParticles(runeSwitch.x, runeSwitch.y, '#38bdf8', 18, 220);
+    }
+
+    // Retracting Floor Spikes (Prince of Persia timing trap)
+    const nowT = performance.now() * 0.001;
+    spikes.forEach(sp => {
+      const cycle = Math.sin(nowT * 2.2 + sp.phase);
+      sp.up = cycle > 0.25;
+      if (sp.up && rectsOverlap(targetBox, { x: sp.x + 4, y: world.groundY - 24, w: sp.w - 8, h: 24 })) {
+        damagePlayer(20);
+      }
+    });
+
+    // Swinging Pendulum Blades
+    pendulums.forEach(pd => {
+      const ang = Math.sin(nowT * pd.speed + pd.phase) * 0.95;
+      pd.bx = pd.x + Math.sin(ang) * pd.len;
+      pd.by = pd.y + Math.cos(ang) * pd.len;
+      if (rectsOverlap(targetBox, { x: pd.bx - 20, y: pd.by - 20, w: 40, h: 40 })) {
+        damagePlayer(26);
+      }
+    });
+
+    // Collectible Relics (Side Quest)
+    relics.forEach(r => {
+      if (!r.collected && !r.locked && rectsOverlap(targetBox, { x: r.x - 14, y: r.y - 14, w: 28, h: 28 })) {
+        r.collected = true;
+        stageRelicsFound++; totalRelics++;
+        player.hp = Math.min(player.maxHp, player.hp + 45);
+        player.mp = Math.min(player.maxMp, player.mp + 30);
+        AudioSys.jump();
+        spawnParticles(r.x, r.y, '#fbbf24', 14);
+        addFloatText(r.x, r.y - 10, '+RELIC! HP/MP UP', '#fbbf24');
+        document.getElementById('qt-side').textContent = `Collect Relics (${stageRelicsFound}/3) • Total ${totalRelics}`;
+      }
+    });
+
+    // Multi-Zone (5 Zones/Map) & Multi-Wave (3 Waves/Zone) Progression
+    if (portal && enemies.length === 0) {
+      if (stageWave < stageMaxWaves) {
+        stageWave++;
+        player.hp = Math.min(player.maxHp, player.hp + 45);
+        showBanner(`ZONE ${stageZone}/${stageMaxZones} • WAVE ${stageWave}/${stageMaxWaves}`, stageWave === 3 ? 'ELITE GUARDIAN APPROACHING!' : 'CORRUPTED REINFORCEMENTS');
+        spawnWave(world.stageIdx, stageWave);
+      } else if (stageZone < stageMaxZones) {
+        stageZone++; stageWave = 1; rpg.zonesCleared++; saveRpg();
+        player.hp = Math.min(player.maxHp, player.hp + 80);
+        player.mp = Math.min(player.maxMp, player.mp + 40);
+        showBanner(`ENTERING ZONE ${stageZone} OF ${stageMaxZones}`, stageZone === 5 ? 'FINAL REGION GUARDIAN AHEAD!' : 'DEEPENING INTO REGION');
+        spawnWave(world.stageIdx, 1);
+      } else {
+        portal.active = true;
+        if (Math.abs(targetX - portal.x) < 55) { rpg.zonesCleared++; gainRewards(120, 200); unlockNextMap(world.stageIdx); transitionToStage(world.stageIdx + 1); }
+      }
+    }
+
+    if (boss && boss.hp > 0) {
+      boss.hitFlash = Math.max(0, boss.hitFlash - dt);
+      if (boss.staggered > 0) boss.staggered -= dt;
+      else {
+        boss.aiTimer -= dt;
+        const bx = boss.x + boss.w / 2, dx = targetX - bx;
+        boss.facing = dx > 0 ? 1 : -1;
+        if (boss.aiState === 'TELEGRAPH') {
+          boss.telegraph -= dt;
+          if (boss.telegraph <= 0) {
+            boss.aiState = 'ATTACK';
+            // Pattern Prediction: punish repeated player attacks or dash/jump habits
+            if (aiBrain.spamCount >= 3 && Math.abs(dx) < 220) {
+              aiBrain.spamCount = 0;
+              boss.x = Math.max(80, Math.min(world.width - boss.w - 40, predX + boss.facing * 120));
+              addFloatText(boss.x + boss.w / 2, boss.y - 12, 'PATTERN READ!', '#f43f5e');
+              AudioSys.plasma();
+              for (let k = -1; k <= 1; k++) {
+                projectiles.push({ fromPlayer: false, x: boss.x + boss.w / 2, y: boss.y + boss.h * 0.45, vx: (predX > boss.x ? 1 : -1) * 460, vy: k * 90, r: 13, dmg: 30, color: '#f43f5e', life: 2.2 });
+              }
+            } else if (Math.abs(dx) < 260) {
+              boss.vx = boss.facing * 540; world.shake = 10; AudioSys.heavy();
+              if (rectsOverlap(boss, targetBox)) damagePlayer(boss.phase === 3 ? 52 : 34);
+            } else {
+              AudioSys.plasma();
+              const count = boss.phase >= 2 ? 4 : 2;
+              const antiAirVy = aiBrain.jumpCount >= 3 ? -110 : 0;
+              for (let k = 0; k < count; k++) {
+                projectiles.push({ fromPlayer: false, x: bx + boss.facing * 40, y: boss.y + boss.h * (0.25 + k * 0.18), vx: boss.facing * (440 + k * 55), vy: antiAirVy + (k - 1) * 28, r: 14, dmg: 28, color: boss.color, life: 2.5 });
+              }
+            }
+            boss.aiTimer = boss.phase >= 2 ? 0.68 : 0.98;
+          }
+        } else {
+          if (Math.abs(dx) > 150) boss.vx += (boss.facing * (165 + boss.phase * 35) - boss.vx) * dt * 6;
+          else boss.vx *= 0.85;
+          if (boss.aiTimer <= 0) { boss.aiState = 'TELEGRAPH'; boss.telegraph = 0.38; boss.vx = 0; }
+        }
+        boss.x = Math.max(80, Math.min(world.width - boss.w - 40, boss.x + boss.vx * dt));
+      }
+    }
+
+    for (let i = projectiles.length - 1; i >= 0; i--) {
+      const p = projectiles[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt;
+      const pBox = { x: p.x - p.r, y: p.y - p.r, w: p.r * 2, h: p.r * 2 };
+      if (p.fromPlayer) {
+        let hit = false;
+        enemies.forEach(e => { if (rectsOverlap(pBox, e)) { e.hp -= p.dmg; e.hitFlash = 0.12; spawnParticles(p.x, p.y, p.color, 10); addFloatText(e.x + e.w / 2, e.y, `-${p.dmg}`, p.color); hit = true; } });
+        if (boss && boss.hp > 0 && rectsOverlap(pBox, boss)) {
+          boss.hp = Math.max(0, boss.hp - p.dmg); boss.hitFlash = 0.12; boss.stagger = Math.min(boss.maxStagger, boss.stagger + (p.stagger || 10));
+          spawnParticles(p.x, p.y, p.color, 14); addFloatText(boss.x + boss.w / 2, boss.y + 15, `-${p.dmg}`, p.color); checkBossTransitions(); hit = true;
+        }
+        if (hit) p.life = 0;
+      } else if (rectsOverlap(pBox, targetBox)) { damagePlayer(p.dmg); spawnParticles(p.x, p.y, p.color, 10); p.life = 0; }
+      if (p.life <= 0) projectiles.splice(i, 1);
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) { const pt = particles[i]; pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.vy += 380 * dt; pt.life -= dt; if (pt.life <= 0) particles.splice(i, 1); }
+    for (let i = floatingTexts.length - 1; i >= 0; i--) { const f = floatingTexts[i]; f.y -= 36 * dt; f.life -= dt; if (f.life <= 0) floatingTexts.splice(i, 1); }
+    for (let i = player.afterimages.length - 1; i >= 0; i--) { player.afterimages[i].life -= dt; if (player.afterimages[i].life <= 0) player.afterimages.splice(i, 1); }
+    world.ambient.forEach(a => { a.x -= a.sp * dt; a.y += (STAGES[world.stageIdx].particle === 'ember' ? -22 : 14) * dt; if (a.x < 0) a.x = world.width; if (a.y < 0) a.y = world.groundY; if (a.y > world.groundY) a.y = 0; });
+
+    world.camZoom += (world.targetZoom - world.camZoom) * Math.min(1, dt * 5);
+    const viewW = W / world.camZoom, viewH = H / world.camZoom;
+    let focusX = targetX;
+    if (boss && boss.hp > 0 && player.mode === 'MECH_COMBAT') focusX = (targetX + boss.x + boss.w / 2) * 0.5;
+    world.camX += (Math.max(0, Math.min(world.width - viewW, focusX - viewW * 0.45)) - world.camX) * Math.min(1, dt * 7);
+    world.camY += (Math.max(-140, world.groundY - viewH * 0.78) - world.camY) * Math.min(1, dt * 7);
+
+    const nearMech = mech.active && Math.abs((player.x + player.w / 2) - (mech.x + 50)) < 150;
+    if (player.mode === 'MECH_COMBAT' || nearMech) {
+      elBtnMech.style.boxShadow = '0 0 18px #22d3ee';
+      elBtnMech.innerHTML = (player.mode === 'MECH_COMBAT' ? '⏏️' : '🤖') + '<span class="orb-key">F</span>';
+    } else {
+      elBtnMech.style.boxShadow = '';
+      elBtnMech.innerHTML = '✨<span class="orb-key">F</span>';
+    }
+
+    updateHud();
+    for (const k in justPressed) justPressed[k] = false;
+  }
+
+  function updateHud() {
+    const inMech = player.mode === 'MECH_COMBAT';
+    elHudPanel.classList.toggle('mech-mode', inMech);
+    if (inMech) {
+      elCharName.textContent = 'VAYRUKA'; elCharBadge.textContent = '18.5M • MECH';
+      elLblHp.textContent = 'INT'; elLblMp.textContent = 'ENG';
+      elBarHp.className = 'bar-fill bar-mech'; elBarHp.style.width = `${(mech.hp / mech.maxHp) * 100}%`;
+      elValHp.textContent = `${Math.ceil(mech.hp)}/${mech.maxHp}`;
+      elBarMp.style.width = `${(mech.energy / mech.maxEnergy) * 100}%`; elValMp.textContent = `${Math.ceil(mech.energy)}/${mech.maxEnergy}`;
+    } else {
+      elCharName.textContent = CHARACTERS[selectedCharIdx].name; elCharBadge.textContent = `LV.${rpg.level} • ZONE ${stageZone}/${stageMaxZones}`;
+      elLblHp.textContent = 'HP'; elLblMp.textContent = 'MP';
+      elBarHp.className = 'bar-fill bar-hp'; elBarHp.style.width = `${(player.hp / player.maxHp) * 100}%`;
+      elValHp.textContent = `${Math.ceil(player.hp)}/${player.maxHp}`;
+      elBarMp.style.width = `${(player.mp / player.maxMp) * 100}%`; elValMp.textContent = `${Math.ceil(player.mp)}/${player.maxMp}`;
+    }
+    const expPct = Math.min(100, Math.round((rpg.exp / rpg.expNext) * 100));
+    const elExpBar = document.getElementById('bar-exp');
+    const elExpVal = document.getElementById('val-exp');
+    if (elExpBar) elExpBar.style.width = expPct + '%';
+    if (elExpVal) elExpVal.textContent = expPct + '%';
+    if (boss) {
+      elBossHp.style.width = `${(boss.hp / boss.maxHp) * 100}%`;
+      elBossStagger.style.width = `${(boss.stagger / boss.maxStagger) * 100}%`;
+      elBossPhase.textContent = boss.staggered > 0 ? 'STAGGERED!' : `PHASE ${boss.phase}`;
+    }
+  }
+
+  // ==================== RENDERING ====================
+  function drawHeroSprite(c, cx, cy, scale, facing, ch, moving, atk, ghost) {
+    const t = performance.now() * 0.001;
+    const stride = moving ? Math.sin(t * 16) * 10 : 0;
+    const bob = moving ? Math.abs(Math.cos(t * 16)) * 2.5 : Math.sin(t * 3) * 1.2;
+
+    c.save();
+    c.translate(cx, cy + bob);
+    c.scale(facing * scale, scale);
+    // Martial-arts forward combat lean during attacks/dash
+    if (atk) c.rotate(0.18); else if (moving) c.rotate(0.08);
+
+    // Flowing Cel-Shaded Anime Cape / Scarf with Luminous Rim
+    const capeGrad = c.createLinearGradient(-44, -18, -6, 12);
+    capeGrad.addColorStop(0, ghost ? ch.energy : (ch.id === 'aruvex' ? '#ef4444' : ch.accent));
+    capeGrad.addColorStop(1, ghost ? ch.energy : (ch.id === 'aruvex' ? '#7f1d1d' : ch.primary));
+    c.fillStyle = capeGrad;
+    c.strokeStyle = '#090d16'; c.lineWidth = 1.6;
+    c.beginPath();
+    c.moveTo(-4, -16);
+    c.quadraticCurveTo(-28 - Math.sin(t * 8) * 5, -20, -44, -6 + Math.cos(t * 8) * 5);
+    c.quadraticCurveTo(-28, 2, -10, -2);
+    c.closePath();
+    c.fill(); c.stroke();
+
+    // Articulated Anime Legs + Metallic Knee Armor
+    c.lineWidth = 6.5; c.lineCap = 'round'; c.strokeStyle = ghost ? ch.energy : '#0f172a';
+    c.beginPath(); c.moveTo(-5, 11); c.lineTo(-7 - stride, 30); c.moveTo(5, 11); c.lineTo(7 + stride, 30); c.stroke();
+    c.fillStyle = ghost ? ch.energy : '#fbbf24';
+    c.beginPath(); c.arc(-6 - stride * 0.6, 20, 3.2, 0, Math.PI * 2); c.arc(6 + stride * 0.6, 20, 3.2, 0, Math.PI * 2); c.fill();
+
+    // Cel-Shaded Armor Torso + Metallic Trim + Glowing Core
+    c.fillStyle = ghost ? ch.energy : ch.primary;
+    c.strokeStyle = '#090d16'; c.lineWidth = 1.8;
+    c.beginPath(); c.roundRect(-11, -15, 22, 28, 6); c.fill(); c.stroke();
+    c.fillStyle = ghost ? '#fff' : '#0284c7';
+    c.fillRect(-10, 5, 20, 7);
+    c.fillStyle = '#fbbf24'; c.fillRect(-10, 3, 20, 2);
+    c.fillStyle = ch.energy; c.shadowColor = ch.energy; c.shadowBlur = 8;
+    c.beginPath(); c.arc(0, -5, 3.5, 0, Math.PI * 2); c.fill();
+    c.shadowBlur = 0;
+
+    // Back Hand Anime Energy Blade
+    c.save(); c.translate(-8, -2); c.rotate(atk ? -1.1 : -2.35);
+    c.fillStyle = ch.energy; c.shadowColor = ch.energy; c.shadowBlur = 14;
+    c.beginPath(); c.moveTo(0, -3); c.lineTo(36, 0); c.lineTo(0, 3); c.closePath(); c.fill();
+    c.shadowBlur = 0; c.restore();
+
+    // Anime Head, Mask, Spiky Hair & Glowing Eyes/Goggles
+    c.fillStyle = ghost ? ch.energy : ch.skin;
+    c.strokeStyle = '#090d16'; c.lineWidth = 1.5;
+    c.beginPath(); c.arc(0, -23, 9.2, 0, Math.PI * 2); c.fill(); c.stroke();
+    if (ch.id === 'aruvex' || ch.id === 'rekha' || ch.id === 'aiketzo') {
+      c.fillStyle = '#0f172a';
+      c.beginPath(); c.roundRect(-6, -22, 15, 8, 2); c.fill();
+    }
+    c.fillStyle = ghost ? ch.energy : ch.hair;
+    c.beginPath();
+    c.moveTo(-12, -25); c.lineTo(-15, -33); c.lineTo(-7, -30); c.lineTo(-4, -39);
+    c.lineTo(2, -32); c.lineTo(9, -38); c.lineTo(10, -28); c.lineTo(13, -25);
+    c.closePath(); c.fill(); c.stroke();
+    if (ch.id === 'aruvex') {
+      c.fillStyle = '#f97316'; c.beginPath(); c.roundRect(-3, -31, 10, 4.5, 1.5); c.fill();
+      c.fillStyle = '#fef08a'; c.fillRect(0, -30, 5, 2.5);
+    } else if (ch.id === 'penshan') {
+      c.fillStyle = ch.primary; c.fillRect(-16, -34, 32, 4); c.fillRect(-9, -41, 18, 8);
+    }
+    c.fillStyle = ch.energy; c.shadowColor = ch.energy; c.shadowBlur = 6;
+    c.fillRect(3, -25, 5.5, 2.8); c.shadowBlur = 0;
+
+    // Front Hand Weapon + Anime Slash Arc
+    c.save(); c.translate(8, -2); c.rotate(atk ? 0.95 : 0.42);
+    const fc = ch.id === 'aruvex' ? '#f97316' : ch.energy;
+    c.fillStyle = fc; c.shadowColor = fc; c.shadowBlur = 14;
+    if (ch.type === 'chakra') { c.strokeStyle = fc; c.lineWidth = 3.5; c.beginPath(); c.arc(16, 0, 11, 0, Math.PI * 2); c.stroke(); }
+    else if (ch.type === 'bow') { c.strokeStyle = ch.accent; c.lineWidth = 3; c.beginPath(); c.arc(6, 0, 16, -1.4, 1.4); c.stroke(); }
+    else if (ch.type === 'staff') { c.fillStyle = '#e2e8f0'; c.fillRect(-2, -1.5, 32, 3); c.fillStyle = fc; c.beginPath(); c.arc(30, 0, 5.5, 0, Math.PI * 2); c.fill(); }
+    else { c.beginPath(); c.moveTo(0, -3.5); c.lineTo(38, 0); c.lineTo(0, 3.5); c.closePath(); c.fill(); }
+    if (atk && !ghost) {
+      c.strokeStyle = fc; c.lineWidth = 4;
+      c.beginPath(); c.arc(10, 0, 34, -0.9, 0.9); c.stroke();
+    }
+    c.shadowBlur = 0; c.restore();
+
+    c.restore();
+  }
+
+  function draw() {
+    ctx.imageSmoothingEnabled = true;
+    ctx.save();
+    ctx.scale(DPR, DPR);
+    const st = STAGES[world.stageIdx];
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, st.skyTop); sky.addColorStop(1, st.skyBot);
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    for (let i = 0; i < 8; i++) {
+      const px = ((i * 340 - world.camX * 0.25) % (W + 400)) - 200;
+      ctx.beginPath(); ctx.moveTo(px, H); ctx.lineTo(px + 180, H * 0.42); ctx.lineTo(px + 380, H); ctx.fill();
+    }
+
+    ctx.save();
+    const sx = (Math.random() - 0.5) * world.shake, sy = (Math.random() - 0.5) * world.shake;
+    ctx.scale(world.camZoom, world.camZoom);
+    ctx.translate(-world.camX + sx, -world.camY + sy);
+
+    ctx.fillStyle = st.accent;
+    world.ambient.forEach(a => { ctx.globalAlpha = 0.45; ctx.fillRect(a.x, a.y, a.s, a.s); });
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = st.ground; ctx.fillRect(0, world.groundY, world.width, 400);
+    ctx.fillStyle = st.accent; ctx.fillRect(0, world.groundY, world.width, 4);
+    // Pixel-art stone brick pattern along floor
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    for (let bx = 0; bx < world.width; bx += 32) {
+      ctx.fillRect(bx, world.groundY + 8, 28, 10);
+      ctx.fillRect(bx + 16, world.groundY + 22, 28, 10);
+    }
+    // Polished Marble Floor Reflection under Hero
+    if (player.mode === 'ON_FOOT') {
+      ctx.save(); ctx.globalAlpha = 0.22;
+      ctx.fillStyle = CHARACTERS[selectedCharIdx].energy;
+      ctx.beginPath(); ctx.ellipse(player.x + player.w / 2 - 14, world.groundY + 14, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f97316';
+      ctx.beginPath(); ctx.ellipse(player.x + player.w / 2 + 16, world.groundY + 14, 22, 6, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+    world.platforms.forEach(p => { ctx.fillStyle = '#1e293b'; ctx.fillRect(p.x, p.y, p.w, p.h); ctx.fillStyle = st.accent; ctx.fillRect(p.x, p.y, p.w, 3); });
+
+    // Ancient Rune Switch
+    if (runeSwitch) {
+      ctx.save();
+      ctx.fillStyle = runeSwitch.activated ? '#22d3ee' : '#f97316';
+      ctx.fillRect(runeSwitch.x - 14, runeSwitch.y, 28, 34);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(runeSwitch.x - 6, runeSwitch.y + 6, 12, 12);
+      ctx.restore();
+    }
+
+    // Floor Spike Traps
+    spikes.forEach(sp => {
+      ctx.fillStyle = '#334155'; ctx.fillRect(sp.x, world.groundY - 4, sp.w, 6);
+      const h = sp.up ? 24 : 5;
+      ctx.fillStyle = sp.up ? '#e2e8f0' : '#64748b';
+      for (let sx = sp.x + 6; sx < sp.x + sp.w - 6; sx += 12) {
+        ctx.beginPath(); ctx.moveTo(sx - 4, world.groundY); ctx.lineTo(sx, world.groundY - h); ctx.lineTo(sx + 4, world.groundY); ctx.closePath(); ctx.fill();
+      }
+    });
+
+    // Swinging Pendulum Blades
+    pendulums.forEach(pd => {
+      if (pd.bx === undefined) return;
+      ctx.save();
+      ctx.strokeStyle = '#94a3b8'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.moveTo(pd.x, pd.y); ctx.lineTo(pd.bx, pd.by); ctx.stroke();
+      ctx.fillStyle = '#cbd5e1'; ctx.shadowColor = '#f43f5e'; ctx.shadowBlur = 10;
+      ctx.beginPath(); ctx.arc(pd.bx, pd.by, 22, 0, Math.PI); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    });
+
+    relics.forEach(r => {
+      if (r.collected) return;
+      ctx.save(); ctx.translate(r.x, r.y + Math.sin(performance.now() * 0.004) * 5);
+      ctx.fillStyle = r.locked ? '#64748b' : '#fbbf24';
+      ctx.shadowColor = r.locked ? '#38bdf8' : '#fbbf24'; ctx.shadowBlur = 14;
+      ctx.beginPath(); ctx.moveTo(0, -12); ctx.lineTo(10, 0); ctx.lineTo(0, 12); ctx.lineTo(-10, 0); ctx.closePath(); ctx.fill();
+      if (r.locked) { ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 2; ctx.strokeRect(-15, -16, 30, 32); }
+      ctx.restore();
+    });
+
+    if (portal) {
+      ctx.save(); ctx.translate(portal.x, portal.y);
+      ctx.strokeStyle = portal.active ? '#22d3ee' : '#475569'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.ellipse(0, 0, 26, 48, 0, 0, Math.PI * 2); ctx.stroke();
+      if (portal.active) { ctx.fillStyle = 'rgba(34,211,238,0.25)'; ctx.fill(); }
+      ctx.restore();
+    }
+
+    if (mech.active) drawMech();
+
+    if (player.mode === 'ON_FOOT' || player.mode === 'EXITING_MECH') {
+      const ch = CHARACTERS[selectedCharIdx];
+      const moving = Math.abs(player.vx) > 25 && player.onGround;
+      player.afterimages.forEach(ai => { ctx.globalAlpha = ai.life * 2.5; drawHeroSprite(ctx, ai.x + player.w / 2, ai.y + player.h / 2, 1, ai.facing, ch, false, false, true); });
+      ctx.globalAlpha = (player.invuln > 0 && Math.floor(player.invuln * 20) % 2) ? 0.45 : 1;
+      drawHeroSprite(ctx, player.x + player.w / 2, player.y + player.h / 2, 1, player.facing, ch, moving, player.atkTimer > 0, false);
+      ctx.globalAlpha = 1;
+    }
+
+    enemies.forEach(e => {
+      ctx.save();
+      ctx.translate(e.x + e.w / 2, e.y + e.h / 2);
+      ctx.scale(e.facing, 1);
+      const ec = e.hitFlash > 0 ? '#ffffff' : e.color;
+      ctx.fillStyle = ec;
+      if (e.kind === 'bird') {
+        // Winged Gargoyle / Visapaksha
+        ctx.beginPath(); ctx.moveTo(-22, -8); ctx.lineTo(-4, -22); ctx.lineTo(18, -4); ctx.lineTo(0, 16); ctx.closePath(); ctx.fill();
+      } else if (e.kind === 'wolf') {
+        // Hellhound / Kalisvana with magma stripes
+        ctx.beginPath(); ctx.roundRect(-24, -12, 48, 26, 8); ctx.fill();
+        ctx.fillStyle = '#fef08a'; ctx.fillRect(12, -10, 8, 5);
+        ctx.fillStyle = '#1e293b'; ctx.fillRect(-18, 12, 8, 14); ctx.fillRect(10, 12, 8, 14);
+      } else if (e.kind === 'demon') {
+        // Horned Demon Knight with Axe (like Demon Castle screenshot)
+        ctx.fillStyle = '#1e1b4b'; ctx.beginPath(); ctx.roundRect(-16, -20, 32, 42, 6); ctx.fill();
+        ctx.fillStyle = ec; ctx.fillRect(-14, -16, 28, 10);
+        // Horns
+        ctx.beginPath(); ctx.moveTo(-8, -22); ctx.lineTo(-14, -34); ctx.lineTo(-2, -22); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(8, -22); ctx.lineTo(14, -34); ctx.lineTo(2, -22); ctx.fill();
+        // Glowing Eye & Axe
+        ctx.fillStyle = '#facc15'; ctx.fillRect(4, -18, 7, 4);
+        ctx.fillStyle = '#ef4444'; ctx.fillRect(14, -22, 6, 36);
+        ctx.fillRect(16, -24, 14, 14);
+      } else if (e.kind === 'redcap') {
+        // Redcap Goblin (tall red pointed hat + spear)
+        ctx.beginPath(); ctx.roundRect(-14, -14, 28, 36, 6); ctx.fill();
+        ctx.fillStyle = '#dc2626';
+        ctx.beginPath(); ctx.moveTo(-14, -14); ctx.lineTo(0, -36); ctx.lineTo(14, -14); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = '#e2e8f0'; ctx.fillRect(10, -8, 18, 3);
+      } else if (e.kind === 'boar') {
+        // Dynabore (explosive glowing nose + white tusks)
+        ctx.beginPath(); ctx.roundRect(-22, -16, 44, 34, 10); ctx.fill();
+        ctx.fillStyle = '#f8fafc'; ctx.fillRect(14, 4, 10, 5);
+        ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.arc(20, -2, 6, 0, Math.PI * 2); ctx.fill();
+      } else if (e.kind === 'frog') {
+        // Karpada (Mud Frog + pink tongue)
+        ctx.beginPath(); ctx.arc(0, 4, 20, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#facc15'; ctx.beginPath(); ctx.arc(8, -12, 5, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#f472b6'; ctx.fillRect(14, 2, 16, 4);
+      } else {
+        // Armored Palace Guard / Goblin Warrior w/ Spear & Sun Tower Shield (exact look from screenshot)
+        ctx.fillStyle = '#1e3a8a'; ctx.fillRect(-14, 6, 28, 16); // Blue cape
+        ctx.fillStyle = '#cbd5e1'; ctx.beginPath(); ctx.roundRect(-14, -20, 28, 36, 6); ctx.fill(); // Silver armor
+        ctx.fillStyle = '#fbbf24'; ctx.fillRect(-16, -20, 32, 7); // Gold pauldrons
+        ctx.fillStyle = '#94a3b8'; ctx.beginPath(); ctx.arc(0, -26, 9, 0, Math.PI * 2); ctx.fill(); // Helm
+        ctx.fillStyle = '#38bdf8'; ctx.fillRect(2, -28, 6, 3); // Visor glow
+        // Tower Shield
+        ctx.fillStyle = '#1e3a8a'; ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.roundRect(4, -14, 18, 28, 4); ctx.fill(); ctx.stroke();
+        // Spear
+        ctx.fillStyle = '#e2e8f0'; ctx.fillRect(-20, -34, 3, 52);
+      }
+      ctx.restore();
+      ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(e.x, e.y - 12, e.w, 5);
+      ctx.fillStyle = '#ef4444'; ctx.fillRect(e.x, e.y - 12, e.w * (e.hp / e.maxHp), 5);
+    });
+
+    if (boss && boss.hp > 0) drawBoss();
+
+    // Shadow Fight Sweeping Crescent Slash Trails
+    slashArcs.forEach(sa => {
+      c_arc: {
+        ctx.save();
+        ctx.translate(sa.x, sa.y);
+        ctx.scale(sa.facing, 1);
+        ctx.globalAlpha = Math.max(0, sa.life / sa.maxLife);
+        ctx.strokeStyle = sa.color;
+        ctx.shadowColor = sa.color;
+        ctx.shadowBlur = 16;
+        ctx.lineWidth = sa.step === 2 ? 7 : 5;
+        ctx.beginPath();
+        if (sa.step === 1) ctx.arc(0, 0, sa.r, -0.35, 1.45);
+        else if (sa.step === 2) ctx.arc(0, 0, sa.r, -1.35, 1.15);
+        else ctx.arc(0, 0, sa.r, -1.15, 0.75);
+        ctx.stroke();
+        ctx.restore();
+      }
+    });
+
+    projectiles.forEach(p => {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.fillStyle = p.color; ctx.strokeStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 14;
+      if (p.shape === 'arrow') {
+        ctx.rotate(Math.atan2(p.vy, p.vx));
+        ctx.fillRect(-14, -1.5, 24, 3);
+        ctx.beginPath(); ctx.moveTo(14, 0); ctx.lineTo(6, -5); ctx.lineTo(6, 5); ctx.closePath(); ctx.fill();
+      } else if (p.shape === 'chakra') {
+        ctx.rotate(performance.now() * 0.015);
+        ctx.lineWidth = 3.5;
+        ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.stroke();
+        ctx.fillRect(-p.r, -2, p.r * 2, 4);
+      } else if (p.shape === 'wave') {
+        ctx.scale(p.vx >= 0 ? 1 : -1, 1);
+        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.arc(-6, 0, p.r, -1.0, 1.0); ctx.stroke();
+      } else if (p.shape === 'claw') {
+        ctx.beginPath(); ctx.moveTo(-14, 18); ctx.lineTo(-6, -18); ctx.lineTo(0, 4); ctx.lineTo(8, -22); ctx.lineTo(14, 18); ctx.closePath(); ctx.fill();
+      } else {
+        ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI * 2); ctx.fill();
+        ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, p.r + 5, 0, Math.PI * 2); ctx.stroke();
+      }
+      ctx.restore();
+    });
+    particles.forEach(pt => { ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife); ctx.fillStyle = pt.color; ctx.fillRect(pt.x, pt.y, pt.size, pt.size); });
+    ctx.globalAlpha = 1;
+    ctx.font = '900 16px Inter, sans-serif'; ctx.textAlign = 'center';
+    floatingTexts.forEach(f => { ctx.globalAlpha = Math.min(1, f.life * 2); ctx.fillStyle = f.color; ctx.fillText(f.txt, f.x, f.y); });
+    ctx.globalAlpha = 1;
+
+    ctx.restore();
+    // Shadow Fight Dramatic Edge Vignette
+    const vig = ctx.createRadialGradient(W * 0.5, H * 0.5, W * 0.28, W * 0.5, H * 0.5, W * 0.72);
+    vig.addColorStop(0, 'rgba(0,0,0,0)');
+    vig.addColorStop(1, 'rgba(2,4,12,0.48)');
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, W, H);
+    if (world.transAlpha > 0) { ctx.fillStyle = `rgba(4, 6, 16, ${world.transAlpha})`; ctx.fillRect(0, 0, W, H); }
+    ctx.restore();
+  }
+
+  function drawMech() {
+    ctx.save(); ctx.translate(mech.x + 53, mech.y + 74); ctx.scale(mech.facing, 1);
+    ctx.fillStyle = '#1e293b'; ctx.fillRect(-34, 32, 22, 42); ctx.fillRect(12, 32, 22, 42);
+    ctx.fillStyle = '#334155'; ctx.beginPath(); ctx.roundRect(-44, -56, 88, 90, 10); ctx.fill();
+    ctx.fillStyle = '#64748b'; ctx.fillRect(-30, -44, 60, 48);
+    ctx.fillStyle = player.mode === 'MECH_COMBAT' ? '#22d3ee' : '#0e7490';
+    ctx.beginPath(); ctx.arc(4, -22, 13, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#475569'; ctx.fillRect(-18, -76, 36, 22);
+    ctx.fillStyle = '#22d3ee'; ctx.fillRect(2, -68, 16, 5);
+    ctx.save(); ctx.translate(32, -24); ctx.rotate(mech.atkTimer > 0 ? 0.78 : 0.08);
+    ctx.fillStyle = '#475569'; ctx.fillRect(-4, -8, 34, 18);
+    if (mech.atkTimer > 0) { ctx.fillStyle = '#22d3ee'; ctx.fillRect(28, -6, 86, 12); }
+    ctx.restore(); ctx.restore();
+  }
+
+  function drawBoss() {
+    const t = performance.now() * 0.001;
+    ctx.save(); ctx.translate(boss.x + boss.w / 2, boss.y + boss.h / 2); ctx.scale(boss.facing, 1);
+    if (boss.aiState === 'TELEGRAPH') { ctx.shadowColor = '#facc15'; ctx.shadowBlur = 24; }
+    const col = boss.hitFlash > 0 ? '#ffffff' : boss.color;
+    ctx.fillStyle = col;
+    if (boss.type === 'vijra') {
+      // Celestial Dragon Wings
+      ctx.beginPath(); ctx.moveTo(-10, -20); ctx.lineTo(-boss.w * 0.8, -boss.h * 0.65 + Math.sin(t * 7) * 14); ctx.lineTo(-boss.w * 0.3, 20); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.roundRect(-boss.w * 0.35, -boss.h * 0.4, boss.w * 0.7, boss.h * 0.8, 16); ctx.fill();
+      ctx.fillStyle = '#fef08a'; ctx.fillRect(boss.w * 0.1, -boss.h * 0.34, 24, 9);
+    } else if (boss.type === 'vysaka') {
+      // Undead King Halo & Ribcage
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(0, -boss.h * 0.42, 34, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(-boss.w * 0.35, -boss.h * 0.38, boss.w * 0.7, boss.h * 0.85, 12); ctx.fill();
+      ctx.fillStyle = '#f8fafc'; ctx.fillRect(-boss.w * 0.2, -boss.h * 0.18, boss.w * 0.4, 8);
+      ctx.fillStyle = '#f43f5e'; ctx.fillRect(boss.w * 0.25, -boss.h * 0.4, 10, boss.h * 0.9);
+    } else if (boss.type === 'raganada') {
+      // Doom Orchestra Halo + Baton
+      ctx.strokeStyle = '#c084fc'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(0, 0, boss.w * 0.52, 0, Math.PI * 2); ctx.stroke();
+      ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(-boss.w * 0.34, -boss.h * 0.4, boss.w * 0.68, boss.h * 0.85, 14); ctx.fill();
+    } else if (boss.type === 'nidra') {
+      // Nidra: Eldritch Leviathan with Tentacles & Abyssal Eye
+      ctx.strokeStyle = '#38bdf8'; ctx.lineWidth = 8;
+      for (let k = -2; k <= 2; k++) {
+        ctx.beginPath(); ctx.moveTo(k * 18, 20);
+        ctx.quadraticCurveTo(k * 34 + Math.sin(t * 4 + k) * 18, boss.h * 0.4, k * 42, boss.h * 0.48);
+        ctx.stroke();
+      }
+      ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(0, -14, boss.w * 0.36, boss.h * 0.38, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = '#f43f5e'; ctx.beginPath(); ctx.ellipse(10, -18, 14, 24, 0, 0, Math.PI * 2); ctx.fill();
+    } else if (boss.type === 'colossus') {
+      // Agnivraka / Rudra: Ashen Behemoth Wolf with white mane & magma diamond runes
+      ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(-boss.w * 0.45, -boss.h * 0.38, boss.w * 0.9, boss.h * 0.82, 18); ctx.fill();
+      ctx.fillStyle = '#e2e8f0'; // White mane
+      ctx.beginPath(); ctx.moveTo(-boss.w * 0.35, -boss.h * 0.38); ctx.lineTo(-boss.w * 0.1, -boss.h * 0.56); ctx.lineTo(boss.w * 0.2, -boss.h * 0.38); ctx.fill();
+      ctx.fillStyle = '#fef08a'; ctx.fillRect(boss.w * 0.14, -boss.h * 0.28, 22, 9);
+    } else if (boss.type === 'demon' || boss.type === 'knight') {
+      // Demon King / Knight with horned helm & giant greataxe
+      ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(-boss.w * 0.36, -boss.h * 0.42, boss.w * 0.72, boss.h * 0.86, 12); ctx.fill();
+      ctx.fillStyle = '#fbbf24';
+      ctx.beginPath(); ctx.moveTo(-16, -boss.h * 0.42); ctx.lineTo(-28, -boss.h * 0.62); ctx.lineTo(-4, -boss.h * 0.42); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(16, -boss.h * 0.42); ctx.lineTo(28, -boss.h * 0.62); ctx.lineTo(4, -boss.h * 0.42); ctx.fill();
+      ctx.fillStyle = '#f97316'; ctx.fillRect(boss.w * 0.26, -boss.h * 0.35, 12, boss.h * 0.75);
+      ctx.fillRect(boss.w * 0.28, -boss.h * 0.38, 34, 28);
+    } else {
+      ctx.beginPath(); ctx.roundRect(-boss.w * 0.42, -boss.h * 0.42, boss.w * 0.84, boss.h * 0.88, 16); ctx.fill();
+      ctx.fillStyle = '#facc15'; ctx.fillRect(boss.w * 0.08, -boss.h * 0.32, 22, 8);
+    }
+    ctx.shadowBlur = 0; ctx.restore();
+  }
+
+  // ==================== HOME UI & MODALS ====================
+  function refreshHomeHero() {
+    const ch = CHARACTERS[selectedCharIdx];
+    document.getElementById('home-pname').textContent = ch.name;
+    document.getElementById('home-avatar').textContent = ch.name[0];
+    document.getElementById('home-avatar').style.background = ch.primary;
+    document.getElementById('hc-hero-tag').textContent = `${ch.name} • ${ch.weapon.toUpperCase()}`;
+  }
+
+  function openModal(mode) {
+    elModalBody.innerHTML = '';
+    if (mode === 'map') {
+      elModalTitle.textContent = 'REALM MAP — ALL 50 ENVIRONMENTS';
+      const grid = document.createElement('div'); grid.className = 'grid-cards';
+      STAGES.forEach(st => {
+        const c = document.createElement('div');
+        const unlocked = st.id <= storyState.unlockedMaxMap;
+        c.className = 'item-card' + (st.id === world.stageIdx ? ' selected' : '') + (unlocked ? '' : ' locked');
+        c.style.borderTop = `3px solid ${unlocked ? st.accent : '#475569'}`;
+        c.innerHTML = `<div class="ic-tag">${st.code} • ${st.act} ${unlocked ? (storyState.clearedMaps.has(st.id) ? '✓' : '🔓') : '🔒'}</div><div class="ic-name">${st.name}</div><div class="ic-sub">${unlocked ? (st.boss ? '🐉 ' + st.boss.name.split('—')[0] : '⚔️ Exploration') : 'Complete ' + STAGES[st.id - 1].code + ' to unlock'}</div>`;
+        c.onclick = () => {
+          if (!unlocked) { showBanner('REGION LOCKED', `COMPLETE ${STAGES[st.id - 1].code} FIRST`); return; }
+          elSubModal.classList.add('hidden'); elHome.classList.add('hidden'); world.paused = false; loadStage(st.id);
+        };
+        grid.appendChild(c);
+      });
+      elModalBody.appendChild(grid);
+    } else if (mode === 'characters') {
+      elModalTitle.textContent = 'CHARACTER ROSTER (GAME SHEETS)';
+      const grid = document.createElement('div'); grid.className = 'grid-cards';
+      CHARACTERS.forEach((ch, idx) => {
+        const unlocked = storyState.unlockedMaxMap >= ch.unlockMap;
+        const c = document.createElement('div');
+        c.className = 'item-card' + (idx === selectedCharIdx ? ' selected' : '') + (unlocked ? '' : ' locked');
+        c.innerHTML = `<div class="ic-tag" style="color:${unlocked ? ch.energy : '#94a3b8'}">${ch.role} • ${ch.id === 'kalika' ? '⚠️ MYSTERIOUS' : (unlocked ? '🤝 ALLIANCE' : '🔒 LOCKED')}</div><div class="ic-name">${ch.name}</div><div class="ic-sub">${unlocked ? (ch.weapon + ' • HP ' + ch.hp) : ('Clear Map ' + String(ch.unlockMap).padStart(2,'0') + ' to unlock')}</div>`;
+        c.onclick = () => {
+          if (!unlocked) { showBanner('CHARACTER LOCKED', `COMPLETE MAP ${String(ch.unlockMap).padStart(2,'0')} MISSION FIRST`); return; }
+          selectedCharIdx = idx;
+          const chNew = CHARACTERS[selectedCharIdx];
+          player.maxHp = chNew.hp; player.hp = chNew.hp;
+          player.maxMp = chNew.mp; player.mp = chNew.mp;
+          refreshHomeHero();
+          updateHud();
+          elSubModal.classList.add('hidden');
+          if (elHome.classList.contains('hidden')) {
+            world.paused = false;
+            showBanner(chNew.name, chNew.weapon.toUpperCase());
+          }
+        };
+        grid.appendChild(c);
+      });
+      elModalBody.appendChild(grid);
+    } else if (mode === 'boss') {
+      elModalTitle.textContent = 'BOSS HUNT — COLOSSI & WORLD BOSSES';
+      const grid = document.createElement('div'); grid.className = 'grid-cards';
+      STAGES.filter(s => s.boss).forEach(st => {
+        const unlocked = st.id <= storyState.unlockedMaxMap;
+        const c = document.createElement('div'); c.className = 'item-card' + (unlocked ? '' : ' locked');
+        c.innerHTML = `<div class="ic-tag">${st.code} • ${st.name} ${unlocked ? '🔓' : '🔒'}</div><div class="ic-name" style="color:#fda4af">${st.boss.name}</div><div class="ic-sub">${unlocked ? ('HP ' + Math.round(st.boss.hp * 1.4) + (st.hasMech ? ' • VAYRUKA Mech' : '')) : 'Locked — Clear prior maps'}</div>`;
+        c.onclick = () => {
+          if (!unlocked) { showBanner('BOSS LOCKED', `REACH ${st.code} IN STORY FIRST`); return; }
+          elSubModal.classList.add('hidden'); elHome.classList.add('hidden'); world.paused = false; loadStage(st.id);
+        };
+        grid.appendChild(c);
+      });
+      elModalBody.appendChild(grid);
+    } else if (mode === 'quests') {
+      elModalTitle.textContent = 'MAIN STORYLINE — 5 ACTS (100-HOUR CAMPAIGN)';
+      const grid = document.createElement('div'); grid.className = 'grid-cards';
+      STORY_CHAPTERS.forEach(ch => {
+        const unlocked = ch.map <= storyState.unlockedMaxMap;
+        const done = storyState.clearedMaps.has(ch.map);
+        const c = document.createElement('div'); c.className = 'item-card' + (unlocked ? '' : ' locked');
+        c.innerHTML = `<div class="ic-tag">${ch.act} ${done ? '✓' : (unlocked ? '🔓' : '🔒')}</div><div class="ic-name">${ch.title}</div><div class="ic-sub">${ch.desc}</div>`;
+        c.onclick = () => {
+          if (!unlocked) { showBanner('ACT LOCKED', `UNLOCK MAP ${String(ch.map + 1).padStart(2,'0')} FIRST`); return; }
+          elSubModal.classList.add('hidden'); elHome.classList.add('hidden'); world.paused = false; loadStage(ch.map);
+        };
+        grid.appendChild(c);
+      });
+      elModalBody.appendChild(grid);
+    } else if (mode === 'skills') {
+      elModalTitle.textContent = `FORGE & UPGRADES • GOLD: ${rpg.gold.toLocaleString()}`;
+      const wCost = rpg.weaponLv * 180, aCost = rpg.armorLv * 160;
+      elModalBody.innerHTML = `
+        <div class="grid-cards">
+          <div class="item-card" id="forge-weap">
+            <div class="ic-tag">WEAPON LV.${rpg.weaponLv}</div>
+            <div class="ic-name">Upgrade ${CHARACTERS[selectedCharIdx].weapon}</div>
+            <div class="ic-sub">+6 Base ATK • Cost: ${wCost} Gold</div>
+          </div>
+          <div class="item-card" id="forge-arm">
+            <div class="ic-tag">ARMOR LV.${rpg.armorLv}</div>
+            <div class="ic-name">Reinforce Nexus Armor</div>
+            <div class="ic-sub">+25 Max HP • Cost: ${aCost} Gold</div>
+          </div>
+          <div class="item-card">
+            <div class="ic-tag">60-HOUR CAMPAIGN PROGRESS</div>
+            <div class="ic-name">Zones Cleared: ${rpg.zonesCleared} / 250</div>
+            <div class="ic-sub">Hero Lv.${rpg.level} • Relics: ${totalRelics} / 150</div>
+          </div>
+        </div>`;
+      document.getElementById('forge-weap').onclick = () => {
+        if (rpg.gold < wCost) { showBanner('NOT ENOUGH GOLD', `NEED ${wCost} GOLD`); return; }
+        rpg.gold -= wCost; rpg.weaponLv++; saveRpg(); openModal('skills');
+      };
+      document.getElementById('forge-arm').onclick = () => {
+        if (rpg.gold < aCost) { showBanner('NOT ENOUGH GOLD', `NEED ${aCost} GOLD`); return; }
+        rpg.gold -= aCost; rpg.armorLv++; player.maxHp += 25; player.hp = player.maxHp; saveRpg(); openModal('skills');
+      };
+    } else if (mode === 'codex') {
+      elModalTitle.textContent = 'AGE OF GODS — THE SIX FOUNDERS & LORE';
+      const founders = [
+        { name: 'JAYAN (जयन्)', role: 'Chief Scientist • Plan One', item: 'World Core Sphere', quote: '"I designed a paradise. But perfection was a mistake."' },
+        { name: 'ALIKA (अलिका)', role: 'World-Story Researcher', item: 'Story Lotus', quote: '"The story of this world is not written yet... It still needs you."' },
+        { name: 'ARIN (अरिन)', role: 'Supreme Commander', item: 'Reconquest Blade', quote: '"A fallen world must be reclaimed. Even if it costs everything."' },
+        { name: 'NEEL (नील)', role: 'Botanist Scientist', item: 'Viridian Seed', quote: '"Life always finds a way... Even in the ruins."' },
+        { name: 'SETU (सेतु)', role: 'Magic-Operation Theory', item: 'Arcane Grimoire', quote: '"Magic is not a miracle. It is a language that can be understood."' },
+        { name: 'ESHAN (ईशान)', role: 'Tomb Guardian', item: 'Sealing Blade', quote: '"Some knowledge must remain sealed. That is my eternity."' }
+      ];
+      const grid = document.createElement('div'); grid.className = 'grid-cards';
+      founders.forEach(f => {
+        const c = document.createElement('div'); c.className = 'item-card';
+        c.innerHTML = `<div class="ic-tag">${f.role}</div><div class="ic-name">${f.name}</div><div class="ic-sub">${f.item} • ${f.quote}</div>`;
+        grid.appendChild(c);
+      });
+      elModalBody.appendChild(grid);
+    } else {
+      elModalTitle.textContent = mode.toUpperCase();
+      elModalBody.innerHTML = `<div class="item-card"><div class="ic-tag">NEXUS SYSTEM</div><div class="ic-name">${CHARACTERS[selectedCharIdx].name} — ${CHARACTERS[selectedCharIdx].skill}</div><div class="ic-sub">Active Region: ${STAGES[world.stageIdx].code} ${STAGES[world.stageIdx].name}. Use Touch Controls or Keyboard (A/D, Space, Shift, J/K/Q, F for VAYRUKA).</div></div>`;
+    }
+    elSubModal.classList.remove('hidden');
+  }
+
+  // ==================== INPUT & BUTTON BINDINGS ====================
+  const keyMap = { ArrowLeft:'left', KeyA:'left', ArrowRight:'right', KeyD:'right', ArrowUp:'jump', KeyW:'jump', Space:'jump', ShiftLeft:'dash', ShiftRight:'dash', KeyJ:'attack', KeyZ:'attack', KeyK:'heavy', KeyX:'heavy', KeyQ:'skill', KeyE:'skill', KeyF:'mech' };
+  window.addEventListener('keydown', e => { AudioSys.init(); const k = keyMap[e.code]; if (k) { e.preventDefault(); setInput(k, true); } });
+  window.addEventListener('keyup', e => { const k = keyMap[e.code]; if (k) setInput(k, false); });
+
+  document.querySelectorAll('[data-key]').forEach(btn => {
+    const k = btn.dataset.key;
+    const on = e => { e.preventDefault(); AudioSys.init(); btn.classList.add('active'); setInput(k, true); };
+    const off = e => { e.preventDefault(); btn.classList.remove('active'); setInput(k, false); };
+    btn.addEventListener('touchstart', on, { passive: false });
+    btn.addEventListener('touchend', off, { passive: false });
+    btn.addEventListener('touchcancel', off, { passive: false });
+    btn.addEventListener('mousedown', on); btn.addEventListener('mouseup', off); btn.addEventListener('mouseleave', off);
+  });
+
+  // Virtual Joystick (Supports rotated portrait->landscape & native landscape)
+  const joyBase = document.getElementById('joy-base');
+  const joyKnob = document.getElementById('joy-knob');
+  let joyTouchId = null;
+  function handleJoyMove(clientX, clientY) {
+    const rect = joyBase.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const isPortrait = window.innerHeight > window.innerWidth;
+    // Map screen delta into game-wrap local coordinates
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    if (isPortrait) {
+      const lx = dy;
+      const ly = -dx;
+      dx = lx; dy = ly;
+    }
+    const maxR = 36;
+    const dist = Math.hypot(dx, dy);
+    const clamped = Math.min(dist, maxR);
+    const ang = Math.atan2(dy, dx);
+    const kx = Math.cos(ang) * clamped;
+    const ky = Math.sin(ang) * clamped;
+    joyKnob.style.transform = `translate(${kx}px, ${ky}px)`;
+    setInput('left', kx < -10);
+    setInput('right', kx > 10);
+    if (ky < -26) setInput('jump', true); else if (ky > -14) setInput('jump', false);
+  }
+  function resetJoy() {
+    joyTouchId = null;
+    joyKnob.style.transform = 'translate(0px, 0px)';
+    setInput('left', false);
+    setInput('right', false);
+    setInput('jump', false);
+  }
+  joyBase.addEventListener('touchstart', e => {
+    e.preventDefault(); AudioSys.init();
+    const t = e.changedTouches[0]; joyTouchId = t.identifier;
+    handleJoyMove(t.clientX, t.clientY);
+  }, { passive: false });
+  joyBase.addEventListener('touchmove', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) if (t.identifier === joyTouchId) handleJoyMove(t.clientX, t.clientY);
+  }, { passive: false });
+  joyBase.addEventListener('touchend', e => {
+    e.preventDefault();
+    for (const t of e.changedTouches) if (t.identifier === joyTouchId) resetJoy();
+  }, { passive: false });
+  joyBase.addEventListener('touchcancel', resetJoy);
+  let joyMouseDown = false;
+  joyBase.addEventListener('mousedown', e => { AudioSys.init(); joyMouseDown = true; handleJoyMove(e.clientX, e.clientY); });
+  window.addEventListener('mousemove', e => { if (joyMouseDown) handleJoyMove(e.clientX, e.clientY); });
+  window.addEventListener('mouseup', () => { if (joyMouseDown) { joyMouseDown = false; resetJoy(); } });
+
+  elSplash.onclick = () => {
+    AudioSys.init();
+    try {
+      if (document.documentElement.requestFullscreen && /Android/i.test(navigator.userAgent)) document.documentElement.requestFullscreen().catch(() => {});
+      if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {});
+    } catch (_) {}
+    elSplash.classList.add('hidden');
+    elHome.classList.remove('hidden');
+    refreshHomeHero();
+  };
+
+  function startGameplay(stageIdx) {
+    AudioSys.init();
+    elHome.classList.add('hidden');
+    world.paused = false;
+    loadStage(stageIdx);
+  }
+
+  document.getElementById('btn-continue').onclick = () => startGameplay(world.stageIdx);
+  document.getElementById('btn-story-continue').onclick = () => startGameplay(world.stageIdx);
+  document.getElementById('btn-realm-map').onclick = () => openModal('map');
+  document.getElementById('btn-dungeons').onclick = () => { if (storyState.unlockedMaxMap >= 25) startGameplay(25); else showBanner('DUNGEON LOCKED', 'CLEAR MAPS 01–25 TO UNLOCK VAYRUKA'); };
+  document.getElementById('btn-boss-hunt').onclick = () => openModal('boss');
+  document.getElementById('btn-profile').onclick = () => openModal('characters');
+  document.getElementById('modal-close').onclick = () => {
+    elSubModal.classList.add('hidden');
+    if (elHome.classList.contains('hidden')) world.paused = false;
+  };
+  document.getElementById('btn-home').onclick = () => { world.paused = true; elHome.classList.remove('hidden'); };
+  document.getElementById('side-inv').onclick = () => { world.paused = true; openModal('characters'); };
+  document.getElementById('side-qst').onclick = () => { world.paused = true; openModal('quests'); };
+  document.getElementById('side-set').onclick = () => { world.paused = true; elHome.classList.remove('hidden'); };
+  document.getElementById('btn-map').onclick = () => { world.paused = true; openModal('map'); };
+  document.getElementById('btn-mute').onclick = e => { AudioSys.muted = !AudioSys.muted; e.target.textContent = AudioSys.muted ? '🔇' : '🔊'; };
+  document.getElementById('btn-replay').onclick = () => { elEndingOverlay.classList.add('hidden'); startGameplay(0); };
+  document.getElementById('btn-end-home').onclick = () => { elEndingOverlay.classList.add('hidden'); elHome.classList.remove('hidden'); };
+
+  document.querySelectorAll('[data-nav]').forEach(b => {
+    b.onclick = () => {
+      const n = b.dataset.nav;
+      if (n === 'home') return;
+      openModal(n);
+    };
+  });
+
+  // ==================== MAIN LOOP ====================
+  let lastT = 0;
+  function loop(t) {
+    const dt = Math.min(0.05, (t - lastT) / 1000 || 0.016);
+    lastT = t;
+    update(dt);
+    draw();
+    // Update Minimap
+    mctx.clearRect(0, 0, 118, 34);
+    mctx.fillStyle = 'rgba(15,23,42,0.9)'; mctx.fillRect(0, 0, 118, 34);
+    mctx.fillStyle = '#334155'; mctx.fillRect(0, 26, 118, 2);
+    const sx = 114 / world.width;
+    mctx.fillStyle = '#38bdf8'; mctx.fillRect(2 + player.x * sx, 16, 4, 8);
+    if (mech.active) { mctx.fillStyle = '#22d3ee'; mctx.fillRect(2 + mech.x * sx, 12, 5, 12); }
+    enemies.forEach(e => { mctx.fillStyle = '#ef4444'; mctx.fillRect(2 + e.x * sx, 18, 3, 6); });
+    if (boss && boss.hp > 0) { mctx.fillStyle = '#f43f5e'; mctx.fillRect(2 + boss.x * sx, 8, 7, 16); }
+    if (portal && portal.active) { mctx.fillStyle = '#4ade80'; mctx.fillRect(2 + portal.x * sx, 10, 4, 14); }
+
+    if (!elHome.classList.contains('hidden')) {
+      hctx.clearRect(0, 0, 180, 150);
+      drawHeroSprite(hctx, 90, 92, 1.85, 1, CHARACTERS[selectedCharIdx], false, false, false);
+    }
+    requestAnimationFrame(loop);
+  }
+
+  window.onload = () => {
+    resize();
+    loadStage(0);
+    world.paused = true;
+    requestAnimationFrame(loop);
+  };
+})();
+</script>
+</body>
+</html>
